@@ -1,0 +1,13 @@
+*.zip
+src/figures/*
+src/data/*
+src/.old/*
+
+
+!.gitkeep
+.DS_Store
+.vscode/
+__pycache__/
+*.pyc
+.env
+.ipynb_checkpoints/
