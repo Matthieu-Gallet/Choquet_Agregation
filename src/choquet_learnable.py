@@ -1,3 +1,9 @@
+"""
+Choquet Aggregation Module
+
+This module implements Choquet integral-based classifiers for machine learning tasks.
+"""
+
 import warnings
 
 from sklearn.base import ClassifierMixin, BaseEstimator
@@ -9,10 +15,46 @@ from fuzzy_measure.classical import *
 from fuzzy_measure.tnorm import *
 from optimize.gradient_descent import GD_minimize
 from optimize.objective_functions import objective_tnorm, objective
-from utils import preprocess
 
-class Choquet_APB(ClassifierMixin, BaseEstimator):
-    """Choquet Classifier APB (Algebraic Product Binary) - Classical"""
+def preprocess(x, n):
+    """
+    Preprocess the input data for Choquet aggregation.
+
+    Parameters
+    ----------
+    x : array-like
+        Input data array.
+    n : int
+        Number of samples.
+
+    Returns
+    -------
+    array-like
+        Preprocessed data array.
+    """
+    x = np.concatenate([x, np.zeros((n, 1))], axis=1)
+    x = np.sort(x, axis=1)
+    x = np.diff(x, axis=1)
+    return x
+
+class ChoquetClassifier(ClassifierMixin, BaseEstimator):
+    """
+    Choquet Classifier APB (Algebraic Product Binary) - Classical
+
+    This class implements a Choquet integral classifier using classical fuzzy measures,
+    with learnable parameters optimized during training.
+
+    Parameters
+    ----------
+    methode : str, default="Power"
+        The method to use for fuzzy measure, either "Power" or "Weight".
+    optimizer : str, default="Nelder-Mead"
+        The optimization method to use.
+    process_data : bool, default=True
+        Whether to preprocess the input data.
+    jac : bool, default=True
+        Whether to use Jacobian in the optimization process.
+    """
 
     def __init__(
         self, methode="Power", optimizer="Nelder-Mead", process_data=True, jac=True
@@ -29,6 +71,16 @@ class Choquet_APB(ClassifierMixin, BaseEstimator):
         self.jac = jac
 
     def initialize(self, X, y=None):
+        """
+        Initialize the classifier with training data.
+
+        Parameters
+        ----------
+        X : array-like
+            Training data.
+        y : array-like, optional
+            Target values.
+        """
         n = X.shape[0]
         self.p_fit = X.shape[1]
         if self.methode == "Power":
@@ -42,6 +94,16 @@ class Choquet_APB(ClassifierMixin, BaseEstimator):
         self.y_train = y
 
     def fit(self, X, y=None):
+        """
+        Fit the classifier to the training data.
+
+        Parameters
+        ----------
+        X : array-like
+            Training data.
+        y : array-like
+            Target values.
+        """
         self.initialize(X, y)
         self.out_ = minimize(
             objective,
@@ -63,6 +125,19 @@ class Choquet_APB(ClassifierMixin, BaseEstimator):
         self.theta = self.out_.x
 
     def predict_proba(self, X):
+        """
+        Predict class probabilities for the input data.
+
+        Parameters
+        ----------
+        X : array-like
+            Input data.
+
+        Returns
+        -------
+        array-like
+            Predicted class probabilities.
+        """
         n = X.shape[0]
         self.p_prd = X.shape[1]
         if self.success:
@@ -77,6 +152,19 @@ class Choquet_APB(ClassifierMixin, BaseEstimator):
         return np.vstack([1 - self.y_est, self.y_est]).T
 
     def predict(self, X):
+        """
+        Predict class labels for the input data.
+
+        Parameters
+        ----------
+        X : array-like
+            Input data.
+
+        Returns
+        -------
+        array-like
+            Predicted class labels.
+        """
         if self.success:
             if self.y_est is None:
                 self.predict_proba(X)
@@ -86,6 +174,21 @@ class Choquet_APB(ClassifierMixin, BaseEstimator):
         return self.y_pred
 
     def score(self, X, y=None):
+        """
+        Return the accuracy score of the prediction.
+
+        Parameters
+        ----------
+        X : array-like
+            Test data.
+        y : array-like
+            True labels.
+
+        Returns
+        -------
+        float
+            Accuracy score.
+        """
         if self.success:
             if self.y_pred is None:
                 self.predict(X)
@@ -96,8 +199,30 @@ class Choquet_APB(ClassifierMixin, BaseEstimator):
             raise ValueError("Model not fitted")
 
 
-class Choquet_APB_TNORM(ClassifierMixin, BaseEstimator):
-    """Choquet Classifier APB (Algebraic Product Binary) - With T-Norms"""
+class ChoquetTnormClassifier(ClassifierMixin, BaseEstimator):
+    """
+    Choquet Classifier APB (Algebraic Product Binary) - With T-Norms and Learnable Parameters
+
+    This class implements a Choquet integral classifier using T-norms for fuzzy measures,
+    with learnable parameters optimized during training.
+
+    Parameters
+    ----------
+    methode : str, default="Power"
+        The method to use for fuzzy measure, either "Power" or "Weight".
+    optimizer : str, default="Nelder-Mead"
+        The optimization method to use.
+    process_data : bool, default=True
+        Whether to preprocess the input data.
+    jac : bool, default=True
+        Whether to use Jacobian in the optimization process.
+    tnorm_c : int, default=3
+        The T-norm constant.
+    alpha : float, default=0.5
+        Initial alpha value.
+    **kwargs
+        Additional keyword arguments.
+    """
 
     def __init__(
         self,
@@ -125,6 +250,16 @@ class Choquet_APB_TNORM(ClassifierMixin, BaseEstimator):
         self.kwargs = kwargs
 
     def initialize(self, X, y=None):
+        """
+        Initialize the classifier with training data.
+
+        Parameters
+        ----------
+        X : array-like
+            Training data.
+        y : array-like, optional
+            Target values.
+        """
         n = X.shape[0]
         self.p_fit = X.shape[1]
         if self.init_alpha is None:
@@ -149,6 +284,16 @@ class Choquet_APB_TNORM(ClassifierMixin, BaseEstimator):
         self.encoded_labels = self.label_encoder.transform(self.label_encoder.classes_)
 
     def fit(self, X, y=None):
+        """
+        Fit the classifier to the training data.
+
+        Parameters
+        ----------
+        X : array-like
+            Training data.
+        y : array-like
+            Target values.
+        """
         self.initialize(X, y)
         if self.optimizer == "GD":
             self.out_ = GD_minimize(
@@ -190,6 +335,19 @@ class Choquet_APB_TNORM(ClassifierMixin, BaseEstimator):
         self.beta = self.out_["x"][-1]
 
     def predict_proba(self, X):
+        """
+        Predict class probabilities for the input data.
+
+        Parameters
+        ----------
+        X : array-like
+            Input data.
+
+        Returns
+        -------
+        array-like
+            Predicted class probabilities.
+        """
         n = X.shape[0]
         self.p_prd = X.shape[1]
         if self.success:
@@ -208,6 +366,19 @@ class Choquet_APB_TNORM(ClassifierMixin, BaseEstimator):
         return np.vstack([1 - self.y_est, self.y_est]).T
 
     def predict(self, X):
+        """
+        Predict class labels for the input data.
+
+        Parameters
+        ----------
+        X : array-like
+            Input data.
+
+        Returns
+        -------
+        array-like
+            Predicted class labels.
+        """
         if self.success:
             self.predict_proba(X)
             self.y_pred = np.where(self.y_est > 0.5, 1, 0)
@@ -216,6 +387,21 @@ class Choquet_APB_TNORM(ClassifierMixin, BaseEstimator):
         return self.y_pred
 
     def score(self, X, y=None):
+        """
+        Return the accuracy score of the prediction.
+
+        Parameters
+        ----------
+        X : array-like
+            Test data.
+        y : array-like
+            True labels.
+
+        Returns
+        -------
+        float
+            Accuracy score.
+        """
         y = self.label_encoder.transform(y.ravel())
         if self.success:
             self.predict(X)
