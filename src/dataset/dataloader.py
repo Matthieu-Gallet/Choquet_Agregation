@@ -141,11 +141,13 @@ def split_train_test_groupkfold(
     y: np.ndarray,
     groups: np.ndarray,
     n_splits: int = 5,
-    shuffle: bool = True,
-    random_state: int = 42
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    random_state: int = 42,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Split data into train and test sets using GroupKFold (first split only).
+    Split data into train and test sets using GroupKFold.
+    
+    Ensures both classes have non-zero samples in both train and test sets.
+    Tries multiple folds until finding a valid one.
 
     Parameters
     ----------
@@ -157,47 +159,62 @@ def split_train_test_groupkfold(
         Group identifiers for GroupKFold.
     n_splits : int, default=5
         Number of folds for GroupKFold.
-    shuffle : bool, default=True
-        Whether to shuffle the groups before splitting.
     random_state : int, default=42
         Random seed for reproducibility.
+    max_attempts : int, default=100
+        Maximum number of folds to try to find a valid split.
 
     Returns
     -------
     tuple
-        (X_train, X_test, y_train, y_test)
-    """
-    # Shuffle groups if requested
-    if shuffle:
-        np.random.seed(random_state)
-        unique_groups = np.unique(groups)
-        shuffled_groups = unique_groups.copy()
-        np.random.shuffle(shuffled_groups)
+        (X_train, X_test, y_train, y_test, groups_train, groups_test)
         
-        # Create mapping from old to new group indices
-        group_mapping = {old: new for new, old in enumerate(shuffled_groups)}
-        groups_shuffled = np.array([group_mapping[g] for g in groups])
-    else:
-        groups_shuffled = groups
+    Raises
+    ------
+    ValueError
+        If no valid split found after trying all folds.
+    """
+    unique_classes = np.unique(y)
     
-    # Create GroupKFold splitter
-    gkf = GroupKFold(n_splits=n_splits)
+    # Create GroupKFold splitter with shuffle
+    gkf = GroupKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
     
-    # Get first split
-    train_idx, test_idx = next(gkf.split(X, y, groups_shuffled))
+    # Try each fold
+    for fold_idx, (train_idx, test_idx) in enumerate(gkf.split(X, y, groups)):
+        y_train_candidate = y[train_idx]
+        y_test_candidate = y[test_idx]
+        
+        # Check if both classes have non-zero samples in both train and test
+        train_class_counts = [np.sum(y_train_candidate == c) for c in unique_classes]
+        test_class_counts = [np.sum(y_test_candidate == c) for c in unique_classes]
+        
+        # Valid split: all classes have at least one sample in both train and test
+        if all(count > 0 for count in train_class_counts) and all(count > 0 for count in test_class_counts):
+            # Found a valid split!
+            X_train = X[train_idx]
+            X_test = X[test_idx]
+            y_train = y_train_candidate
+            y_test = y_test_candidate
+            groups_train = groups[train_idx]
+            groups_test = groups[test_idx]
+            
+            print(f"\n  [SPLIT] Valid split found (fold {fold_idx + 1}/{n_splits})")
+            print(f"  [SPLIT] Train: {len(X_train)} samples, Test: {len(X_test)} samples")
+            for i, class_id in enumerate(unique_classes):
+                print(f"    - Class {class_id}: Train={train_class_counts[i]}, Test={test_class_counts[i]}")
+            print(f"  [SPLIT] Train groups: {len(np.unique(groups_train))}, Test groups: {len(np.unique(groups_test))}")
+            
+            return X_train, X_test, y_train, y_test, groups_train, groups_test
     
-    X_train = X[train_idx]
-    X_test = X[test_idx]
-    y_train = y[train_idx]
-    y_test = y[test_idx]
-    
-    print(f"\n  [SPLIT] Train: {len(X_train)} samples, Test: {len(X_test)} samples")
-    print(f"  [SPLIT] Train groups: {len(np.unique(groups[train_idx]))}, Test groups: {len(np.unique(groups[test_idx]))}")
-    
-    return X_train, X_test, y_train, y_test
+    # If we reach here, no valid split was found
+    raise ValueError(
+        f"Could not find a valid train/test split after trying all {n_splits} folds. "
+        f"Both classes must have non-zero samples in both train and test sets. "
+        f"Try adjusting n_splits, max_samples_per_class, or the dataset composition."
+    )
 
 
-def extract_binary_class_data(
+def load_and_extract_data(
     loader,
     class_pair: Tuple[str, str],
     date: str,
@@ -212,9 +229,9 @@ def extract_binary_class_data(
     max_mask_percentage: float = 5.0,
     min_valid_percentage: float = 100.0,
     verbose: bool = True
-) -> Dict:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict, Dict]:
     """
-    Extract windows for a binary classification task from two classes.
+    Load data and extract windows for a binary classification task.
 
     Parameters
     ----------
@@ -249,12 +266,11 @@ def extract_binary_class_data(
 
     Returns
     -------
-    dict
-        Dictionary containing:
+    tuple
+        (X, y, groups, class_names, group_names)
         - X: Feature array (N, window_size, window_size, n_pol)
         - y: Labels (0 or 1)
         - groups: Group identifiers (encoded as int)
-        - masks: Mask arrays
         - class_names: Mapping from label to class name
         - group_names: Mapping from int to group name
     """
@@ -361,7 +377,9 @@ def extract_binary_class_data(
     X = np.array(X_all, dtype=np.float32)
     y = np.array(y_all, dtype=np.int32)
     groups = np.array(groups_all, dtype=np.int32)
-    masks = np.array(masks_all)
+    
+    class_names = {0: class_0, 1: class_1}
+    group_names = {v: k for k, v in group_to_int.items()}
     
     if verbose:
         print(f"\n{'='*70}")
@@ -371,22 +389,15 @@ def extract_binary_class_data(
         print(f"  - y distribution: {np.unique(y, return_counts=True)}")
         print(f"  - Unique groups: {len(np.unique(groups))}")
     
-    return {
-        'X': X,
-        'y': y,
-        'groups': groups,
-        'masks': masks,
-        'class_names': {0: class_0, 1: class_1},
-        'group_names': {v: k for k, v in group_to_int.items()}
-    }
+    return X, y, groups, class_names, group_names
 
 
-def load_binary_classification_data(
-    loader,
-    class_pair: Tuple[str, str],
-    date: str = '20200804',
-    window_size: int = 32,
-    skip_optim_offset: bool = True,
+def prepare_train_test_split(
+    X: np.ndarray,
+    y: np.ndarray,
+    groups: np.ndarray,
+    class_names: Dict,
+    group_names: Dict,
     seed: int = 42,
     max_samples_per_class: Optional[int] = None,
     n_splits: int = 5,
@@ -395,24 +406,23 @@ def load_binary_classification_data(
     verbose: bool = True
 ) -> Dict:
     """
-    Load and prepare binary classification data with train/test split.
+    Prepare train/test split from loaded data.
 
-    This function extracts data for two classes, applies optional filtering,
-    noise augmentation, and splits the data using GroupKFold.
+    This function applies optional filtering, noise augmentation,
+    and splits the data using GroupKFold.
 
     Parameters
     ----------
-    loader : MLDatasetLoader
-        Instance of the dataset loader.
-    class_pair : tuple of str
-        Tuple of two class names (e.g., ('ABL', 'ACC')).
-        Supported pairs: ('ABL', 'ACC'), ('FOR', 'PLA'), ('ROC', 'ABL'), ('ROC', 'PLA')
-    date : str, default='20200804'
-        Acquisition date in 'YYYYMMDD' format.
-    window_size : int, default=32
-        Size of the extraction window.
-    skip_optim_offset : bool, default=True
-        Whether to skip window offset optimization.
+    X : np.ndarray
+        Feature array.
+    y : np.ndarray
+        Labels array.
+    groups : np.ndarray
+        Group identifiers.
+    class_names : dict
+        Mapping from label to class name.
+    group_names : dict
+        Mapping from int to group name.
     seed : int, default=42
         Random seed for reproducibility.
     max_samples_per_class : int or None, default=None
@@ -430,100 +440,69 @@ def load_binary_classification_data(
     -------
     dict
         Dictionary containing:
-        - X_train: Training features (N_train, window_size, window_size, n_pol)
-        - X_test: Test features (N_test, window_size, window_size, n_pol)
+        - X_train: Training features
+        - X_test: Test features
         - y_train: Training labels
         - y_test: Test labels
         - groups_train: Training group identifiers
         - groups_test: Test group identifiers
         - class_names: Mapping from label to class name
         - group_names: Mapping from int to group name
-        - metadata: Dictionary with all parameters
     """
-    print(f"\n{'#'*70}")
-    print(f"# BINARY CLASSIFICATION DATALOADER")
-    print(f"{'#'*70}")
-    print(f"Class pair: {class_pair[0]} vs {class_pair[1]}")
-    print(f"Date: {date}")
-    print(f"Seed: {seed}")
-    print(f"Max samples per class: {max_samples_per_class}")
-    
-    # Extract data
-    data = extract_binary_class_data(
-        loader=loader,
-        class_pair=class_pair,
-        date=date,
-        window_size=window_size,
-        skip_optim_offset=skip_optim_offset,
-        orbit='DSC',
-        polarisation=['HH', 'HV'],
-        normalize=False,
-        remove_nodata=False,
-        scale_type='log10',
-        max_mask_value=1,
-        max_mask_percentage=5.0,
-        min_valid_percentage=100.0,
-        verbose=verbose
-    )
-    
-    X = data['X']
-    y = data['y']
-    groups = data['groups']
+    if verbose:
+        print(f"\n{'#'*70}")
+        print(f"# PREPARING TRAIN/TEST SPLIT")
+        print(f"{'#'*70}")
+        print(f"Seed: {seed}")
+        print(f"Max samples per class: {max_samples_per_class}")
     
     # Apply max samples per class filter
     if max_samples_per_class is not None:
-        print(f"\n{'='*70}")
-        print("Filtering by max samples per class...")
+        if verbose:
+            print(f"\n{'='*70}")
+            print("Filtering by max samples per class...")
         X, y, groups = filter_max_samples_per_class(
             X, y, groups, max_samples_per_class, seed
         )
-        print(f"  After filtering: {len(X)} total samples")
+        if verbose:
+            print(f"  After filtering: {len(X)} total samples")
     
     # Split train/test
-    print(f"\n{'='*70}")
-    print("Splitting train/test with GroupKFold...")
-    X_train, X_test, y_train, y_test = split_train_test_groupkfold(
+    if verbose:
+        print(f"\n{'='*70}")
+        print("Splitting train/test with GroupKFold...")
+        
+    X_train, X_test, y_train, y_test, groups_train, groups_test = split_train_test_groupkfold(
         X, y, groups,
         n_splits=n_splits,
-        shuffle=True,
         random_state=seed
     )
     
-    # Get groups for train and test
-    # Re-map to get the actual groups for train/test
-    train_indices = []
-    test_indices = []
-    for i in range(len(X)):
-        if any(np.array_equal(X[i], X_train[j]) for j in range(len(X_train))):
-            train_indices.append(i)
-        else:
-            test_indices.append(i)
-    
-    groups_train = groups[train_indices]
-    groups_test = groups[test_indices]
-    
     # Apply label noise to training set
     if label_noise_percentage > 0:
-        print(f"\n{'='*70}")
-        print("Applying label noise to training set...")
+        if verbose:
+            print(f"\n{'='*70}")
+            print("Applying label noise to training set...")
         y_train = add_label_noise(y_train, label_noise_percentage, seed)
     
     # Apply data noise to training set
     if data_noise_std > 0:
-        print(f"\n{'='*70}")
-        print("Applying data noise to training set...")
+        if verbose:
+            print(f"\n{'='*70}")
+            print("Applying data noise to training set...")
         X_train = add_data_noise(X_train, data_noise_std, seed)
     
     # Final summary
-    print(f"\n{'='*70}")
-    print("FINAL DATASET:")
-    print(f"  Train: {len(X_train)} samples")
-    print(f"    - Class 0 ({data['class_names'][0]}): {np.sum(y_train == 0)}")
-    print(f"    - Class 1 ({data['class_names'][1]}): {np.sum(y_train == 1)}")
-    print(f"  Test: {len(X_test)} samples")
-    print(f"    - Class 0 ({data['class_names'][0]}): {np.sum(y_test == 0)}")
-    print(f"    - Class 1 ({data['class_names'][1]}): {np.sum(y_test == 1)}")
-    print(f"{'='*70}\n")
+    if verbose:
+        print(f"\n{'='*70}")
+        print("FINAL DATASET:")
+        print(f"  Train: {len(X_train)} samples")
+        print(f"    - Class 0 ({class_names[0]}): {np.sum(y_train == 0)}")
+        print(f"    - Class 1 ({class_names[1]}): {np.sum(y_train == 1)}")
+        print(f"  Test: {len(X_test)} samples")
+        print(f"    - Class 0 ({class_names[0]}): {np.sum(y_test == 0)}")
+        print(f"    - Class 1 ({class_names[1]}): {np.sum(y_test == 1)}")
+        print(f"{'='*70}\n")
     
     return {
         'X_train': X_train,
@@ -532,24 +511,8 @@ def load_binary_classification_data(
         'y_test': y_test,
         'groups_train': groups_train,
         'groups_test': groups_test,
-        'class_names': data['class_names'],
-        'group_names': data['group_names'],
-        'metadata': {
-            'class_pair': class_pair,
-            'date': date,
-            'window_size': window_size,
-            'orbit': 'DSC',
-            'polarisation': ['HH', 'HV'],
-            'scale_type': 'log10',
-            'seed': seed,
-            'max_samples_per_class': max_samples_per_class,
-            'n_splits': n_splits,
-            'label_noise_percentage': label_noise_percentage,
-            'data_noise_std': data_noise_std,
-            'max_mask_value': 1,
-            'max_mask_percentage': 5.0,
-            'min_valid_percentage': 100.0
-        }
+        'class_names': class_names,
+        'group_names': group_names
     }
 
 
@@ -560,21 +523,23 @@ def example_usage():
     # Initialize loader
     loader = MLDatasetLoader('../DATASET/PAZTSX_CRYO_ML.hdf5')
     
-    # Define class pairs
-    class_pairs = [
-        ('ABL', 'ACC'),
-        ('FOR', 'PLA'),
-        ('ROC', 'ABL'),
-        ('ROC', 'PLA')
-    ]
-    
-    # Load data for the first pair
-    data = load_binary_classification_data(
+    # Load and extract data once
+    X, y, groups, class_names, group_names = load_and_extract_data(
         loader=loader,
-        class_pair=class_pairs[0],
+        class_pair=('ABL', 'ACC'),
         date='20200804',
         window_size=64,
         skip_optim_offset=True,
+        verbose=True
+    )
+    
+    # Prepare train/test split
+    data = prepare_train_test_split(
+        X=X,
+        y=y,
+        groups=groups,
+        class_names=class_names,
+        group_names=group_names,
         seed=42,
         max_samples_per_class=100,
         n_splits=5,

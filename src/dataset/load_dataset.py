@@ -3,7 +3,7 @@
 Utilities for loading and manipulating HDF5 dataset optimized for ML.
 
 Features:
-- Fast extraction by satellite, class, temporal period
+- Fast extraction by class, temporal period
 - Create temporal sequences for LSTM/Transformer
 - Automatic data normalization
 - Filter by metadata (angle, resolution, etc.)
@@ -42,7 +42,6 @@ class MLDatasetLoader:
         with h5py.File(self.hdf5_path, 'r') as f:
             meta = f['metadata']
             self.classes = json.loads(meta.attrs['classes'])
-            self.satellites = json.loads(meta.attrs['satellites'])
             self.n_groups = meta.attrs['n_total_groups']
             self.nodata = meta.attrs['nodata_value']
             
@@ -51,11 +50,6 @@ class MLDatasetLoader:
             for class_name in f['index/by_class'].keys():
                 entries_json = f[f'index/by_class/{class_name}'].attrs['entries_json']
                 self.class_index[class_name] = json.loads(entries_json)
-            
-            self.satellite_index = {}
-            for sat_name in f['index/by_satellite'].keys():
-                entries_json = f[f'index/by_satellite/{sat_name}'].attrs['entries_json']
-                self.satellite_index[sat_name] = json.loads(entries_json)
             
             temp_ranges_json = f['index/temporal_ranges'].attrs['ranges_json']
             self.temporal_ranges = json.loads(temp_ranges_json)
@@ -315,7 +309,7 @@ class MLDatasetLoader:
             scale_type: 'intensity' (default), 'amplitude' (data**0.5), or 'log10' (log10 scale)
         
         Returns:
-            Dict containing: images, masks, timestamps, satellites, metadata
+            Dict containing: images, masks, timestamps, metadata
         """
         with h5py.File(self.hdf5_path, 'r') as f:
             # Support dual-pol
@@ -353,7 +347,6 @@ class MLDatasetLoader:
                 # Load data for common timestamps
                 images_list = []
                 masks_list = []
-                satellites_list = []
                 angles_list = []
                 
                 # First, determine minimum dimensions
@@ -383,7 +376,6 @@ class MLDatasetLoader:
                     masks_list.append(mask_pol)
                     
                     if pol == polarisation[0]:  # Only once
-                        satellites_list = data_pol['satellites'][:][indices]
                         angles_list = data_pol['angles_incidence'][:][indices]
                 
                 # Stack in last dimension: (H, W, T, 2)
@@ -393,7 +385,6 @@ class MLDatasetLoader:
                 masks = np.maximum(masks_list[0], masks_list[1])
                 
                 timestamps = common_ts
-                satellites = satellites_list
                 angles = angles_list
                 
                 metadata = {
@@ -414,7 +405,6 @@ class MLDatasetLoader:
                 images = pol_data['images'][:]
                 masks = pol_data['masks'][:]
                 timestamps = pol_data['timestamps'][:]
-                satellites = pol_data['satellites'][:]
                 angles = pol_data['angles_incidence'][:]
                 
                 # Filter by dates
@@ -431,7 +421,6 @@ class MLDatasetLoader:
                     images = images[:, :, mask_ts]
                     masks = masks[:, :, mask_ts]
                     timestamps = timestamps[mask_ts]
-                    satellites = satellites[mask_ts]
                     angles = angles[mask_ts]
                 
                 metadata = {
@@ -468,7 +457,6 @@ class MLDatasetLoader:
                 'images': images,
                 'masks': masks,
                 'timestamps': [t.decode('utf-8') for t in timestamps],
-                'satellites': [s.decode('utf-8') for s in satellites],
                 'angles_incidence': angles,
                 'metadata': metadata,
                 'group': group_name,
@@ -493,11 +481,9 @@ class MLDatasetLoader:
         """Return a summary of dataset statistics"""
         stats = {
             'by_class': {},
-            'by_satellite': {},
             'global': {
                 'n_groups': self.n_groups,
                 'n_classes': len(self.classes),
-                'n_satellites': len(self.satellites)
             }
         }
         
@@ -508,12 +494,6 @@ class MLDatasetLoader:
                 'n_groups': len(groups),
                 'groups': groups
             }
-        
-        # Stats by satellite
-        for sat_name in self.satellites:
-            samples = self.get_samples_by_satellite(sat_name)
-            stats['by_satellite'][sat_name] = {
-                'n_samples': len(samples)
-            }
+    
         
         return stats
