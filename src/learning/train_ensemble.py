@@ -28,7 +28,7 @@ from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
 
 def get_config_hash(config: Dict) -> str:
@@ -183,15 +183,19 @@ def train_and_evaluate_models(
                 test_acc = accuracy_score(y_test, y_pred_test)
                 train_f1 = f1_score(y_train, y_pred_train, average='weighted')
                 test_f1 = f1_score(y_test, y_pred_test, average='weighted')
+                train_auc = roc_auc_score(y_train, y_proba_train)
+                test_auc = roc_auc_score(y_test, y_proba_test)
                 
                 scores_dict[model_name] = {
                     'train_acc': train_acc,
                     'test_acc': test_acc,
                     'train_f1': train_f1,
-                    'test_f1': test_f1
+                    'test_f1': test_f1,
+                    'train_auc': train_auc,
+                    'test_auc': test_auc
                 }
                 
-                print(f"  {model_name}: Test Acc={test_acc:.4f}, F1={test_f1:.4f}")
+                print(f"  [TRAIN] {model_name}: F1={test_f1:.4f}, AUC={test_auc:.4f}")
         
         except Exception as e:
             print(f"  ERROR with {model_name}: {e}")
@@ -270,10 +274,9 @@ def train_single_seed(
     X_test = data['X_test']
     y_test = data['y_test']
     
-    print(f"Data loaded: Train={len(X_train)}, Test={len(X_test)}")
+    print(f"  [TRAIN] Data loaded: Train={len(X_train)}, Test={len(X_test)}")
     
     # Train and evaluate models
-    print("Training models...")
     train_results, test_results, scores_dict = train_and_evaluate_models(
         models_config=config['models'],
         X_train=X_train,

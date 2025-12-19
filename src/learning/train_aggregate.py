@@ -18,7 +18,7 @@ from joblib import Parallel, delayed
 
 from learning.choquet_learnable import ChoquetClassifier, ChoquetTnormClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
 warnings.filterwarnings('ignore')
 
@@ -257,21 +257,27 @@ def train_and_evaluate_single_experiment(
             # Predict
             y_pred_train = model.predict(X_train)
             y_pred_test = model.predict(X_test)
+            y_proba_train = model.predict_proba(X_train)[:, 1]
+            y_proba_test = model.predict_proba(X_test)[:, 1]
             
             # Calculate metrics
             train_acc = accuracy_score(y_train, y_pred_train)
             test_acc = accuracy_score(y_test, y_pred_test)
             train_f1 = f1_score(y_train, y_pred_train, average='weighted')
             test_f1 = f1_score(y_test, y_pred_test, average='weighted')
+            train_auc = roc_auc_score(y_train, y_proba_train)
+            test_auc = roc_auc_score(y_test, y_proba_test)
             
             # Store results
             results[f'{model_name}_train_acc'] = train_acc
             results[f'{model_name}_test_acc'] = test_acc
             results[f'{model_name}_train_f1'] = train_f1
             results[f'{model_name}_test_f1'] = test_f1
+            results[f'{model_name}_train_auc'] = train_auc
+            results[f'{model_name}_test_auc'] = test_auc
             
             if verbose:
-                print(f"  {model_name}: Test Acc={test_acc:.4f}, F1={test_f1:.4f}")
+                print(f"  {model_name}: Test Acc={test_acc:.4f}, F1={test_f1:.4f}, AUC={test_auc:.4f}")
         
         except Exception as e:
             print(f"  ERROR with {model_name}: {e}")
@@ -279,6 +285,8 @@ def train_and_evaluate_single_experiment(
             results[f'{model_name}_test_acc'] = np.nan
             results[f'{model_name}_train_f1'] = np.nan
             results[f'{model_name}_test_f1'] = np.nan
+            results[f'{model_name}_train_auc'] = np.nan
+            results[f'{model_name}_test_auc'] = np.nan
     
     return results
 
@@ -413,6 +421,11 @@ def main(config_path: str, results_dir: str = None, n_jobs: int = -1):
             ensemble_df.to_csv(ensemble_csv, index=False)
             print(f"\nEnsemble scores saved to: {ensemble_csv}")
             
+            # Delete individual scores.csv files from subdirectories
+            for exp_dir in [d for d in results_base_dir.iterdir() if d.is_dir() and (d / 'scores.csv').exists()]:
+                (exp_dir / 'scores.csv').unlink()
+                print(f"Deleted: {exp_dir / 'scores.csv'}")
+            
             # Print ensemble summary
             print("\n" + "="*80)
             print("ENSEMBLE CLASSIFIERS SUMMARY (Test F1)")
@@ -426,21 +439,41 @@ def main(config_path: str, results_dir: str = None, n_jobs: int = -1):
                 
                 overall_mean = ensemble_df['test_f1'].mean()
                 print(f"\nOverall Mean (all classifiers): {overall_mean:.4f}")
+                
+                # AUC summary
+                summary_auc = ensemble_df.groupby('model')['test_auc'].agg(['mean', 'std']).round(4)
+                print("\nPer Classifier AUC:")
+                print(summary_auc)
+                
+                overall_auc = ensemble_df['test_auc'].mean()
+                print(f"\nOverall Mean AUC (all classifiers): {overall_auc:.4f}")
     
     # Print summary statistics
     print("\n" + "="*80)
-    print("CHOQUET AGGREGATION SUMMARY")
+    print("CHOQUET AGGREGATION SUMMARY - F1 SCORES")
     print("="*80)
     
-    # Identify metric columns
-    metric_cols = [col for col in df.columns if any(x in col for x in ['test_f1'])]
+    # Identify F1 metric columns
+    f1_cols = [col for col in df.columns if 'test_f1' in col]
     
-    if metric_cols:
-        print("\nTest Metrics Summary:")
-        test_metrics = [col for col in metric_cols if 'test' in col]
-        summary_stats = df[test_metrics].agg(['mean', 'std', lambda x: x.quantile(0.25), lambda x: x.quantile(0.5), lambda x: x.quantile(0.75)])
-        summary_stats.index = ['mean', 'std', '25%', '50%', '75%']
-        print(summary_stats.round(4))
+    if f1_cols:
+        print("\nTest F1 Metrics Summary:")
+        summary_stats_f1 = df[f1_cols].agg(['mean', 'std', lambda x: x.quantile(0.25), lambda x: x.quantile(0.5), lambda x: x.quantile(0.75)])
+        summary_stats_f1.index = ['mean', 'std', '25%', '50%', '75%']
+        print(summary_stats_f1.round(4))
+    
+    print("\n" + "="*80)
+    print("CHOQUET AGGREGATION SUMMARY - AUC-ROC")
+    print("="*80)
+    
+    # Identify AUC metric columns
+    auc_cols = [col for col in df.columns if 'test_auc' in col]
+    
+    if auc_cols:
+        print("\nTest AUC-ROC Metrics Summary:")
+        summary_stats_auc = df[auc_cols].agg(['mean', 'std', lambda x: x.quantile(0.25), lambda x: x.quantile(0.5), lambda x: x.quantile(0.75)])
+        summary_stats_auc.index = ['mean', 'std', '25%', '50%', '75%']
+        print(summary_stats_auc.round(4))
     
     print("\n" + "="*80)
 

@@ -166,11 +166,25 @@ def split_train_test_groupkfold(
     tuple
         (X_train, X_test, y_train, y_test, groups_train, groups_test)
     """
+    # Shuffle data with seed before splitting
+    np.random.seed(random_state)
+    indices = np.arange(len(X))
+    np.random.shuffle(indices)
+    
+    X = X[indices]
+    y = y[indices]
+    groups = groups[indices]
+    
     # Create StratifiedGroupKFold splitter with shuffle
     gkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
     
-    # Use the first fold
-    train_idx, test_idx = next(gkf.split(X, y, groups))
+    # Generate all folds and select one randomly
+    folds = list(gkf.split(X, y, groups))
+    np.random.seed(random_state + 1000)  # Use a derived seed for fold selection
+    fold_idx = np.random.randint(0, n_splits)
+    train_idx, test_idx = folds[fold_idx]
+    
+    print(f"  [SPLIT] Selected fold {fold_idx} randomly from {n_splits} splits")
     
     X_train = X[train_idx]
     X_test = X[test_idx]
