@@ -166,8 +166,8 @@ class ChoquetClassifier(ClassifierMixin, BaseEstimator):
             Predicted class labels.
         """
         if self.success:
-            if self.y_est is None:
-                self.predict_proba(X)
+            # Always recalculate predictions for new data
+            self.predict_proba(X)
             self.y_pred = np.where(self.y_est > 0.5, 1, 0)
         else:
             raise ValueError("Model not fitted")

@@ -8,7 +8,7 @@ using specific class pairs, with train/test splitting respecting group structure
 
 import numpy as np
 from typing import Dict, Tuple, List, Optional
-from sklearn.model_selection import GroupKFold
+from sklearn.model_selection import StratifiedGroupKFold
 from tqdm import tqdm
 
 
@@ -146,8 +146,7 @@ def split_train_test_groupkfold(
     """
     Split data into train and test sets using GroupKFold.
     
-    Ensures both classes have non-zero samples in both train and test sets.
-    Tries multiple folds until finding a valid one.
+    Uses the first fold from StratifiedGroupKFold for train/test split.
 
     Parameters
     ----------
@@ -161,57 +160,37 @@ def split_train_test_groupkfold(
         Number of folds for GroupKFold.
     random_state : int, default=42
         Random seed for reproducibility.
-    max_attempts : int, default=100
-        Maximum number of folds to try to find a valid split.
 
     Returns
     -------
     tuple
         (X_train, X_test, y_train, y_test, groups_train, groups_test)
-        
-    Raises
-    ------
-    ValueError
-        If no valid split found after trying all folds.
     """
+    # Create StratifiedGroupKFold splitter with shuffle
+    gkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+    
+    # Use the first fold
+    train_idx, test_idx = next(gkf.split(X, y, groups))
+    
+    X_train = X[train_idx]
+    X_test = X[test_idx]
+    y_train = y[train_idx]
+    y_test = y[test_idx]
+    groups_train = groups[train_idx]
+    groups_test = groups[test_idx]
+    
     unique_classes = np.unique(y)
+    print(f"  [SPLIT] Using first fold from {n_splits} splits")
+    print(f"  [SPLIT] Train: {len(X_train)} samples, Test: {len(X_test)} samples")
+    for class_id in unique_classes:
+        train_count = np.sum(y_train == class_id)
+        test_count = np.sum(y_test == class_id)
+        train_ratio = train_count / len(y_train) * 100
+        test_ratio = test_count / len(y_test) * 100
+        print(f"  [SPLIT] Class {class_id}: Train={train_count} ({train_ratio:.1f}%), Test={test_count} ({test_ratio:.1f}%)")
+    print(f"  [SPLIT] Train groups: {len(np.unique(groups_train))}, Test groups: {len(np.unique(groups_test))}")
     
-    # Create GroupKFold splitter with shuffle
-    gkf = GroupKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
-    
-    # Try each fold
-    for fold_idx, (train_idx, test_idx) in enumerate(gkf.split(X, y, groups)):
-        y_train_candidate = y[train_idx]
-        y_test_candidate = y[test_idx]
-        
-        # Check if both classes have non-zero samples in both train and test
-        train_class_counts = [np.sum(y_train_candidate == c) for c in unique_classes]
-        test_class_counts = [np.sum(y_test_candidate == c) for c in unique_classes]
-        
-        # Valid split: all classes have at least one sample in both train and test
-        if all(count > 0 for count in train_class_counts) and all(count > 0 for count in test_class_counts):
-            # Found a valid split!
-            X_train = X[train_idx]
-            X_test = X[test_idx]
-            y_train = y_train_candidate
-            y_test = y_test_candidate
-            groups_train = groups[train_idx]
-            groups_test = groups[test_idx]
-            
-            print(f"  [SPLIT] Valid split found (fold {fold_idx + 1}/{n_splits})")
-            print(f"  [SPLIT] Train: {len(X_train)} samples, Test: {len(X_test)} samples")
-            for i, class_id in enumerate(unique_classes):
-                print(f"  [SPLIT] Class {class_id}: Train={train_class_counts[i]}, Test={test_class_counts[i]}")
-            print(f"  [SPLIT] Train groups: {len(np.unique(groups_train))}, Test groups: {len(np.unique(groups_test))}")
-            
-            return X_train, X_test, y_train, y_test, groups_train, groups_test
-    
-    # If we reach here, no valid split was found
-    raise ValueError(
-        f"Could not find a valid train/test split after trying all {n_splits} folds. "
-        f"Both classes must have non-zero samples in both train and test sets. "
-        f"Try adjusting n_splits, max_samples_per_class, or the dataset composition."
-    )
+    return X_train, X_test, y_train, y_test, groups_train, groups_test
 
 
 def load_and_extract_data(
@@ -456,17 +435,6 @@ def prepare_train_test_split(
         print(f"Seed: {seed}")
         print(f"Max samples per class: {max_samples_per_class}")
     
-    # Apply max samples per class filter
-    if max_samples_per_class is not None:
-        if verbose:
-            print(f"\n{'='*70}")
-            print("Filtering by max samples per class...")
-        X, y, groups = filter_max_samples_per_class(
-            X, y, groups, max_samples_per_class, seed
-        )
-        if verbose:
-            print(f"  After filtering: {len(X)} total samples")
-    
     # Split train/test
     if verbose:
         print(f"\n{'='*70}")
@@ -477,6 +445,17 @@ def prepare_train_test_split(
         n_splits=n_splits,
         random_state=seed
     )
+    
+    # Apply max samples per class filter to training set only
+    if max_samples_per_class is not None:
+        if verbose:
+            print(f"\n{'='*70}")
+            print("Filtering training set by max samples per class...")
+        X_train, y_train, groups_train = filter_max_samples_per_class(
+            X_train, y_train, groups_train, max_samples_per_class, seed
+        )
+        if verbose:
+            print(f"  After filtering: {len(X_train)} training samples")
     
     # Apply label noise to training set
     if label_noise_percentage > 0:

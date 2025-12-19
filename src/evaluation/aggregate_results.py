@@ -80,7 +80,7 @@ def compute_statistics(
     """
     # Identify metric columns if not specified
     if metrics is None:
-        metrics = [col for col in df.columns if any(x in col for x in ['_acc', '_f1'])]
+        metrics = [col for col in df.columns if any(x in col for x in ['test_f1'])]
     
     if not metrics:
         print("No metrics found in DataFrame")

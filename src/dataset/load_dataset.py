@@ -387,9 +387,21 @@ class MLDatasetLoader:
                 timestamps = common_ts
                 angles = angles_list
                 
+                # Collect stats for each polarization
+                pol_stats = {}
+                for pol, data_pol in zip(polarisation, data_list):
+                    pol_stats[pol] = {
+                        'mean': data_pol.attrs['stat_mean'],
+                        'std': data_pol.attrs['stat_std'],
+                        'min': data_pol.attrs['stat_min'],
+                        'max': data_pol.attrs['stat_max'],
+                        'n_samples': data_pol.attrs['n_timestamps']
+                    }
+                
                 metadata = {
                     'polarisation': polarisation,
-                    'dual_pol': True
+                    'dual_pol': True,
+                    'pol_stats': pol_stats
                 }
                 
             else:
@@ -447,12 +459,22 @@ class MLDatasetLoader:
                 images = np.where(images > 0, np.log10(images), np.nan)
             # If 'intensity', keep as is (default)
             
-            if normalize and not isinstance(polarisation, list):
-                mean = metadata['mean']
-                std = metadata['std']
-                if std > 0:
-                    images = (images - mean) / std
-            
+            if normalize:
+                if isinstance(polarisation, list):
+                    # Dual-pol: normalize each channel separately
+                    for i, pol in enumerate(polarisation):
+                        mean = metadata['pol_stats'][pol]['mean']
+                        std = metadata['pol_stats'][pol]['std']
+                        if std > 0:
+                            images[..., i] = (images[..., i] - mean) / std
+                            # images[..., i] = (images[..., i] - images[..., i].min()) / (images[..., i].max() - images[..., i].min()) #nanmin
+                else:
+                    # Single-pol: use existing logic
+                    mean = metadata['mean']
+                    std = metadata['std']
+                    if std > 0:
+                        images = (images - mean) / std
+                        # images = (images-images.min()) / (images.max()-images.min())
             return {
                 'images': images,
                 'masks': masks,

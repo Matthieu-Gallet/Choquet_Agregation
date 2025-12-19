@@ -123,7 +123,7 @@ def train_and_evaluate_models(
     y_test: np.ndarray,
     random_state: int = None,
     save_scores: bool = True
-) -> Tuple[Dict, Dict, str]:
+) -> Tuple[Dict, Dict, Dict]:
     """
     Train and evaluate all models.
     
@@ -142,12 +142,12 @@ def train_and_evaluate_models(
     random_state : int, optional
         Random state to use for models.
     save_scores : bool, default=True
-        Whether to generate score report.
+        Whether to save scores.
     
     Returns
     -------
     tuple
-        (train_results, test_results, score_report)
+        (train_results, test_results, scores_dict)
     """
     # Flatten data
     X_train_flat = X_train.reshape(X_train.shape[0], -1)
@@ -155,12 +155,7 @@ def train_and_evaluate_models(
     
     train_results = {'y_train': y_train}
     test_results = {'y_test': y_test}
-    score_report = ""
-    
-    if save_scores:
-        score_report += "="*80 + "\n"
-        score_report += "MODEL EVALUATION REPORT\n"
-        score_report += "="*80 + "\n\n"
+    scores_dict = {} if save_scores else None
     
     for model_config in models_config:
         model_name = model_config['name']
@@ -189,13 +184,12 @@ def train_and_evaluate_models(
                 train_f1 = f1_score(y_train, y_pred_train, average='weighted')
                 test_f1 = f1_score(y_test, y_pred_test, average='weighted')
                 
-                score_report += f"Model: {model_name}\n"
-                score_report += f"-" * 40 + "\n"
-                score_report += f"  Train Accuracy:     {train_acc:.4f}\n"
-                score_report += f"  Test Accuracy:      {test_acc:.4f}\n"
-                score_report += f"  Train F1 (weighted): {train_f1:.4f}\n"
-                score_report += f"  Test F1 (weighted):  {test_f1:.4f}\n"
-                score_report += "\n"
+                scores_dict[model_name] = {
+                    'train_acc': train_acc,
+                    'test_acc': test_acc,
+                    'train_f1': train_f1,
+                    'test_f1': test_f1
+                }
                 
                 print(f"  {model_name}: Test Acc={test_acc:.4f}, F1={test_f1:.4f}")
         
@@ -203,7 +197,7 @@ def train_and_evaluate_models(
             print(f"  ERROR with {model_name}: {e}")
             continue
     
-    return train_results, test_results, score_report
+    return train_results, test_results, scores_dict
 
 
 def train_single_seed(
@@ -280,7 +274,7 @@ def train_single_seed(
     
     # Train and evaluate models
     print("Training models...")
-    train_results, test_results, score_report = train_and_evaluate_models(
+    train_results, test_results, scores_dict = train_and_evaluate_models(
         models_config=config['models'],
         X_train=X_train,
         y_train=y_train,
@@ -296,9 +290,12 @@ def train_single_seed(
     np.save(output_dir / 'train.npy', train_results)
     np.save(output_dir / 'test.npy', test_results)
     
-    if score_report and config['training'].get('save_scores', True):
-        with open(output_dir / 'scores.txt', 'w') as f:
-            f.write(score_report)
+    if scores_dict and config['training'].get('save_scores', True):
+        import pandas as pd
+        scores_df = pd.DataFrame(scores_dict).T
+        scores_df.insert(0, 'model', scores_df.index)
+        scores_df.insert(0, 'seed', seed)
+        scores_df.to_csv(output_dir / 'scores.csv', index=False)
     
     print(f"Results saved to {output_dir}")
 
@@ -469,7 +466,7 @@ def main(config_path: str, n_jobs: int = -1):
     
     # Generate hash for output directory
     config_hash = get_config_hash(config)
-    base_output_dir = Path(__file__).parent.parent.parent / 'results' / config_hash
+    base_output_dir = Path(__file__).parent.parent.parent / 'src/results' / config_hash
     
     print(f"Config hash: {config_hash}")
     print(f"Output directory: {base_output_dir}\n")
@@ -490,14 +487,14 @@ def main(config_path: str, n_jobs: int = -1):
         date=config['dataset']['date'],
         window_size=config['dataset']['window_size'],
         skip_optim_offset=config['dataset']['skip_optim_offset'],
-        orbit='DSC',
-        polarisation=['HH', 'HV'],
-        normalize=False,
-        remove_nodata=False,
-        scale_type='log10',
-        max_mask_value=1,
-        max_mask_percentage=5.0,
-        min_valid_percentage=100.0,
+        orbit=config['dataset'].get('orbit', 'DSC'),
+        polarisation=config['dataset'].get('polarisation', ['HH', 'HV']),
+        normalize=config['dataset'].get('normalize', False),
+        remove_nodata=config['dataset'].get('remove_nodata', True),
+        scale_type=config['dataset'].get('scale_type', 'amplitude'),
+        max_mask_value=config['dataset'].get('max_mask_value', 1),
+        max_mask_percentage=config['dataset'].get('max_mask_percentage', 0.0),
+        min_valid_percentage=config['dataset'].get('min_valid_percentage', 100.0),
         verbose=True
     )
     

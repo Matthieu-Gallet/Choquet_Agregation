@@ -194,7 +194,7 @@ def create_choquet_models(config: Dict, seed: int) -> Dict:
             stpy=choquet_config.get('stpy_power', 0.001)
         ),
         'LogisticRegression': LogisticRegression(
-            penalty=choquet_config.get('lr_penalty', 'none'),
+            penalty=choquet_config.get('lr_penalty', None),
             max_iter=choquet_config.get('lr_max_iter', 1000),
             random_state=seed
         )
@@ -254,7 +254,6 @@ def train_and_evaluate_single_experiment(
         try:
             # Train
             model.fit(X_train, y_train)
-            
             # Predict
             y_pred_train = model.predict(X_train)
             y_pred_test = model.predict(X_test)
@@ -401,18 +400,47 @@ def main(config_path: str, results_dir: str = None, n_jobs: int = -1):
         verbose=True
     )
     
+    # Compile ensemble scores if save_scores is enabled
+    if config.get('training', {}).get('save_scores', True):
+        ensemble_scores_list = []
+        for exp_dir in [d for d in results_base_dir.iterdir() if d.is_dir() and (d / 'scores.csv').exists()]:
+            scores_df = pd.read_csv(exp_dir / 'scores.csv')
+            ensemble_scores_list.append(scores_df)
+        
+        if ensemble_scores_list:
+            ensemble_df = pd.concat(ensemble_scores_list, ignore_index=True)
+            ensemble_csv = results_base_dir / 'ensemble_scores.csv'
+            ensemble_df.to_csv(ensemble_csv, index=False)
+            print(f"\nEnsemble scores saved to: {ensemble_csv}")
+            
+            # Print ensemble summary
+            print("\n" + "="*80)
+            print("ENSEMBLE CLASSIFIERS SUMMARY (Test F1)")
+            print("="*80)
+            
+            test_f1_cols = [col for col in ensemble_df.columns if col == 'test_f1']
+            if 'test_f1' in ensemble_df.columns and 'model' in ensemble_df.columns:
+                summary_stats = ensemble_df.groupby('model')['test_f1'].agg(['mean', 'std']).round(4)
+                print("\nPer Classifier:")
+                print(summary_stats)
+                
+                overall_mean = ensemble_df['test_f1'].mean()
+                print(f"\nOverall Mean (all classifiers): {overall_mean:.4f}")
+    
     # Print summary statistics
     print("\n" + "="*80)
-    print("SUMMARY STATISTICS")
+    print("CHOQUET AGGREGATION SUMMARY")
     print("="*80)
     
     # Identify metric columns
-    metric_cols = [col for col in df.columns if any(x in col for x in ['_acc', '_f1'])]
+    metric_cols = [col for col in df.columns if any(x in col for x in ['test_f1'])]
     
     if metric_cols:
         print("\nTest Metrics Summary:")
         test_metrics = [col for col in metric_cols if 'test' in col]
-        print(df[test_metrics].describe())
+        summary_stats = df[test_metrics].agg(['mean', 'std', lambda x: x.quantile(0.25), lambda x: x.quantile(0.5), lambda x: x.quantile(0.75)])
+        summary_stats.index = ['mean', 'std', '25%', '50%', '75%']
+        print(summary_stats.round(4))
     
     print("\n" + "="*80)
 
