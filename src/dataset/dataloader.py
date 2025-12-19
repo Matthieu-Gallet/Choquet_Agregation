@@ -198,10 +198,10 @@ def split_train_test_groupkfold(
             groups_train = groups[train_idx]
             groups_test = groups[test_idx]
             
-            print(f"\n  [SPLIT] Valid split found (fold {fold_idx + 1}/{n_splits})")
+            print(f"  [SPLIT] Valid split found (fold {fold_idx + 1}/{n_splits})")
             print(f"  [SPLIT] Train: {len(X_train)} samples, Test: {len(X_test)} samples")
             for i, class_id in enumerate(unique_classes):
-                print(f"    - Class {class_id}: Train={train_class_counts[i]}, Test={test_class_counts[i]}")
+                print(f"  [SPLIT] Class {class_id}: Train={train_class_counts[i]}, Test={test_class_counts[i]}")
             print(f"  [SPLIT] Train groups: {len(np.unique(groups_train))}, Test groups: {len(np.unique(groups_test))}")
             
             return X_train, X_test, y_train, y_test, groups_train, groups_test

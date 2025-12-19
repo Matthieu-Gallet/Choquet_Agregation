@@ -11,15 +11,12 @@ import numpy as np
 import yaml
 import hashlib
 from pathlib import Path
-import sys
 from typing import Dict, List, Tuple, Any
 from joblib import Parallel, delayed
 from tqdm import tqdm
 import warnings
 warnings.filterwarnings('ignore')
 
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent))
 
 from dataset.dataloader import load_and_extract_data, prepare_train_test_split
 from dataset.load_dataset import MLDatasetLoader
@@ -31,7 +28,7 @@ from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, confusion_matrix
+from sklearn.metrics import accuracy_score, f1_score
 
 
 def get_config_hash(config: Dict) -> str:
@@ -344,9 +341,9 @@ def run_single_sweep(
     n_jobs : int, default=-1
         Number of parallel jobs.
     """
-    print(f"\n{'#'*80}")
-    print(f"# SWEEP: {param_name} = {param_value}")
-    print(f"{'#'*80}")
+    print(f"\n{'='*80}")
+    print(f"SWEEP: {param_name} = {param_value}")
+    print(f"{'='*80}")
     
     # Create sweep directory
     sweep_dir = base_output_dir / f"sweep_{param_name}_{param_value}"
@@ -466,11 +463,7 @@ def main(config_path: str, n_jobs: int = -1):
     n_jobs : int, default=-1
         Number of parallel jobs (-1 for all cores).
     """
-    print(f"\n{'#'*80}")
-    print(f"# ENSEMBLE CLASSIFIER TRAINING")
-    print(f"{'#'*80}")
     print(f"Config: {config_path}\n")
-    
     # Load configuration
     config = load_config(config_path)
     
@@ -549,10 +542,9 @@ def main(config_path: str, n_jobs: int = -1):
             for seed in tqdm(range(n_seeds), desc="Seeds")
         )
     
-    print(f"\n{'#'*80}")
-    print(f"# TRAINING COMPLETE")
-    print(f"# Results saved to: {base_output_dir}")
-    print(f"{'#'*80}\n")
+    print(f"\n{'='*80}")
+    print(f"Results saved to: {base_output_dir}")
+    print(f"{'='*80}\n")
 
 
 if __name__ == "__main__":

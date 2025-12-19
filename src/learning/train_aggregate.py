@@ -10,16 +10,13 @@ import numpy as np
 import pandas as pd
 import yaml
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 import warnings
 from tqdm import tqdm
 from joblib import Parallel, delayed
-import sys
 
-# Add parent directory to path
-sys.path.append(str(Path(__file__).parent))
 
-from choquet_learnable import ChoquetClassifier, ChoquetTnormClassifier
+from learning.choquet_learnable import ChoquetClassifier, ChoquetTnormClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score
 

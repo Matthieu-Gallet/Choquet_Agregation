@@ -9,13 +9,261 @@ for analyzing Choquet aggregation performance across different configurations.
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-# Set style
-sns.set_style("whitegrid")
-sns.set_context("paper", font_scale=1.2)
+# Configure matplotlib for high-quality rendering (fallback without LaTeX)
+try:
+    # Try to use LaTeX if available
+    plt.rcParams.update({
+        "text.usetex": True,
+        "font.family": "serif",
+        "font.serif": ["Charter", "Times New Roman", "DejaVu Serif"],
+        "font.size": 11,
+        "axes.labelsize": 12,
+        "axes.titlesize": 14,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 10,
+        "figure.titlesize": 16,
+        "axes.grid": True,
+        "grid.alpha": 0.3,
+        "axes.axisbelow": True,
+        "figure.figsize": (10, 6),
+        "savefig.dpi": 300,
+        "savefig.bbox": "tight",
+        "savefig.pad_inches": 0.1,
+    })
+except:
+    # Fallback to matplotlib's built-in fonts if LaTeX is not available
+    plt.rcParams.update({
+        "text.usetex": False,
+        "font.family": "serif",
+        "font.serif": ["DejaVu Serif", "Times New Roman", "Liberation Serif"],
+        "font.size": 11,
+        "axes.labelsize": 12,
+        "axes.titlesize": 14,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 10,
+        "figure.titlesize": 16,
+        "axes.grid": True,
+        "grid.alpha": 0.3,
+        "axes.axisbelow": True,
+        "figure.figsize": (10, 6),
+        "savefig.dpi": 300,
+        "savefig.bbox": "tight",
+        "savefig.pad_inches": 0.1,
+    })
+
+
+def _create_matplotlib_boxplot(ax, data, x_col, y_col, palette=None, show_points=False):
+    """
+    Create a matplotlib boxplot equivalent to seaborn's boxplot.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to plot on
+    data : pd.DataFrame
+        Data to plot
+    x_col : str
+        Column name for x-axis (categorical)
+    y_col : str
+        Column name for y-axis (numerical)
+    palette : str or list, optional
+        Color palette (ignored for now, using default colors)
+    show_points : bool, default=False
+        Whether to overlay individual points
+    """
+    # Get unique categories
+    categories = sorted(data[x_col].unique())
+    
+    # Prepare data for boxplot
+    box_data = []
+    positions = []
+    
+    for i, category in enumerate(categories):
+        cat_data = data[data[x_col] == category][y_col].values
+        if len(cat_data) > 0:
+            box_data.append(cat_data)
+            positions.append(i)
+    
+    if not box_data:
+        return
+    
+    # Create boxplot
+    bp = ax.boxplot(box_data, positions=positions, patch_artist=True, widths=0.6)
+    
+    # Style the boxplot
+    colors = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494']
+    
+    for i, box in enumerate(bp['boxes']):
+        color = colors[i % len(colors)]
+        box.set_facecolor(color)
+        box.set_alpha(0.7)
+    
+    for median in bp['medians']:
+        median.set_color('black')
+        median.set_linewidth(2)
+    
+    for whisker in bp['whiskers']:
+        whisker.set_color('black')
+        whisker.set_linewidth(1.5)
+    
+    for cap in bp['caps']:
+        cap.set_color('black')
+        cap.set_linewidth(1.5)
+    
+    # Overlay points if requested
+    if show_points:
+        for i, category in enumerate(categories):
+            cat_data = data[data[x_col] == category]
+            x_jitter = np.random.normal(i, 0.1, size=len(cat_data))
+            ax.scatter(x_jitter, cat_data[y_col], alpha=0.3, color='black', s=10, zorder=3)
+    
+def _create_matplotlib_violinplot(ax, data, x_col, y_col, palette=None):
+    """
+    Create a matplotlib violinplot equivalent to seaborn's violinplot.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to plot on
+    data : pd.DataFrame
+        Data to plot
+    x_col : str
+        Column name for x-axis (categorical)
+    y_col : str
+        Column name for y-axis (numerical)
+    palette : str or list, optional
+        Color palette (ignored for now, using default colors)
+    """
+    # Get unique categories
+    categories = sorted(data[x_col].unique())
+    
+    # Prepare data for violinplot
+    violin_data = []
+    positions = []
+    
+    for i, category in enumerate(categories):
+        cat_data = data[data[x_col] == category][y_col].values
+        if len(cat_data) > 0:
+            violin_data.append(cat_data)
+            positions.append(i)
+    
+    if not violin_data:
+        return
+    
+    # Create violinplot
+    vp = ax.violinplot(violin_data, positions=positions, showmeans=False, showmedians=True)
+    
+    # Style the violinplot
+    colors = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494']
+    
+    for i, body in enumerate(vp['bodies']):
+        color = colors[i % len(colors)]
+        body.set_facecolor(color)
+        body.set_alpha(0.7)
+    
+    # Style median lines
+    vp['cmedians'].set_color('black')
+    vp['cmedians'].set_linewidth(2)
+    
+    # Set x-ticks
+    ax.set_xticks(range(len(categories)))
+    ax.set_xticklabels(categories)
+
+
+def _create_matplotlib_barplot(ax, data, x_col, y_col, palette=None):
+    """
+    Create a matplotlib barplot equivalent to seaborn's barplot.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to plot on
+    data : pd.DataFrame
+        Data to plot
+    x_col : str
+        Column name for x-axis (categorical)
+    y_col : str
+        Column name for y-axis (numerical)
+    palette : str or list, optional
+        Color palette (ignored for now, using default colors)
+    """
+    # Get unique categories
+    categories = data[x_col].unique()
+    
+    # Prepare data
+    values = []
+    positions = []
+    
+    for i, category in enumerate(categories):
+        cat_data = data[data[x_col] == category][y_col].values
+        if len(cat_data) > 0:
+            values.append(np.mean(cat_data))  # Use mean like seaborn barplot
+            positions.append(i)
+    
+    if not values:
+        return
+    
+    # Create barplot
+    colors = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494']
+    bars = ax.bar(positions, values, color=[colors[i % len(colors)] for i in range(len(values))], alpha=0.7)
+    
+    # Set x-ticks
+    ax.set_xticks(positions)
+    ax.set_xticklabels(categories)
+
+
+def _create_matplotlib_heatmap(ax, data, annot=True, fmt='.3f', cmap='YlOrRd', cbar_kws=None):
+    """
+    Create a matplotlib heatmap equivalent to seaborn's heatmap.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        The axes to plot on
+    data : pd.DataFrame
+        Data to plot (pivot table)
+    annot : bool, default=True
+        Whether to annotate cells with values
+    fmt : str, default='.3f'
+        String format for annotations
+    cmap : str, default='YlOrRd'
+        Colormap name
+    cbar_kws : dict, optional
+        Colorbar keyword arguments
+    """
+    # Create heatmap using imshow
+    im = ax.imshow(data.values, cmap=cmap, aspect='auto')
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, ax=ax)
+    if cbar_kws and 'label' in cbar_kws:
+        cbar.set_label(cbar_kws['label'])
+    
+    # Set ticks and labels
+    ax.set_xticks(range(len(data.columns)))
+    ax.set_yticks(range(len(data.index)))
+    ax.set_xticklabels(data.columns)
+    ax.set_yticklabels(data.index)
+    
+    # Rotate x labels
+    plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+    
+    # Add annotations
+    if annot:
+        for i in range(len(data.index)):
+            for j in range(len(data.columns)):
+                value = data.iloc[i, j]
+                if not np.isnan(value):
+                    text = ax.text(j, i, f'{value:{fmt}}',
+                                 ha='center', va='center', color='black',
+                                 fontsize=8, weight='bold')
+    
+    return im
 
 
 def create_boxplots(
@@ -81,26 +329,14 @@ def create_boxplots(
         for ax, group in zip(axes, groups):
             group_data = plot_df[plot_df[group_by] == group]
             
-            # Create boxplot
-            sns.boxplot(
-                data=group_data,
-                x='Model',
-                y='Value',
+            # Create boxplot using matplotlib
+            _create_matplotlib_boxplot(
                 ax=ax,
-                palette='Set2'
+                data=group_data,
+                x_col='Model',
+                y_col='Value',
+                show_points=show_points
             )
-            
-            # Overlay points if requested
-            if show_points:
-                sns.stripplot(
-                    data=group_data,
-                    x='Model',
-                    y='Value',
-                    ax=ax,
-                    color='black',
-                    alpha=0.3,
-                    size=3
-                )
             
             ax.set_title(f'{group_by} = {group}')
             ax.set_xlabel('')
@@ -114,26 +350,14 @@ def create_boxplots(
         # Single plot without grouping
         fig, ax = plt.subplots(figsize=figsize)
         
-        # Create boxplot
-        sns.boxplot(
-            data=plot_df,
-            x='Model',
-            y='Value',
+        # Create boxplot using matplotlib
+        _create_matplotlib_boxplot(
             ax=ax,
-            palette='Set2'
+            data=plot_df,
+            x_col='Model',
+            y_col='Value',
+            show_points=show_points
         )
-        
-        # Overlay points if requested
-        if show_points:
-            sns.stripplot(
-                data=plot_df,
-                x='Model',
-                y='Value',
-                ax=ax,
-                color='black',
-                alpha=0.3,
-                size=3
-            )
         
         ax.set_xlabel('Model')
         ax.set_ylabel(metric.replace('_', ' ').title())
@@ -212,18 +436,48 @@ def create_comparison_plots(
     
     if group_by and group_by in df.columns:
         # Plot 1: Difference by group
-        sns.boxplot(
-            data=diff_df,
-            x=group_by,
-            y='Difference',
-            hue='Model',
-            ax=ax1,
-            palette='Set2'
-        )
+        # For now, create separate boxplots for each model within each group
+        models = sorted(diff_df['Model'].unique())
+        groups = sorted(diff_df[group_by].unique())
+        
+        # Calculate positions for grouped boxplots
+        n_models = len(models)
+        n_groups = len(groups)
+        width = 0.8 / n_models  # Width per model
+        
+        colors = ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494']
+        
+        for i, model in enumerate(models):
+            model_data = diff_df[diff_df['Model'] == model]
+            positions = []
+            box_data = []
+            
+            for j, group in enumerate(groups):
+                group_model_data = model_data[model_data[group_by] == group]['Difference'].values
+                if len(group_model_data) > 0:
+                    positions.append(j - 0.4 + (i + 0.5) * width)
+                    box_data.append(group_model_data)
+            
+            if box_data:
+                bp = ax1.boxplot(box_data, positions=positions, widths=width*0.8, patch_artist=True)
+                color = colors[i % len(colors)]
+                for box in bp['boxes']:
+                    box.set_facecolor(color)
+                    box.set_alpha(0.7)
+                for median in bp['medians']:
+                    median.set_color('black')
+                    median.set_linewidth(2)
+        
         ax1.axhline(0, color='red', linestyle='--', linewidth=1, alpha=0.7)
         ax1.set_title(f'Performance vs {baseline_model}')
         ax1.set_ylabel(f'Δ {metric.replace("_", " ").title()}')
-        ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax1.set_xticks(range(n_groups))
+        ax1.set_xticklabels(groups)
+        
+        # Create legend
+        legend_elements = [plt.Rectangle((0,0),1,1, facecolor=colors[i % len(colors)], alpha=0.7) 
+                          for i in range(n_models)]
+        ax1.legend(legend_elements, models, bbox_to_anchor=(1.05, 1), loc='upper left')
         ax1.grid(True, alpha=0.3)
         
         # Plot 2: Win rate by group
@@ -253,12 +507,11 @@ def create_comparison_plots(
     
     else:
         # Plot 1: Overall difference distribution
-        sns.violinplot(
-            data=diff_df,
-            x='Model',
-            y='Difference',
+        _create_matplotlib_violinplot(
             ax=ax1,
-            palette='Set2'
+            data=diff_df,
+            x_col='Model',
+            y_col='Difference'
         )
         ax1.axhline(0, color='red', linestyle='--', linewidth=1, alpha=0.7)
         ax1.set_title(f'Performance vs {baseline_model}')
@@ -276,12 +529,11 @@ def create_comparison_plots(
         
         win_df = pd.DataFrame(win_rates).sort_values('Win Rate (%)', ascending=False)
         
-        sns.barplot(
-            data=win_df,
-            x='Model',
-            y='Win Rate (%)',
+        _create_matplotlib_barplot(
             ax=ax2,
-            palette='Set2'
+            data=win_df,
+            x_col='Model',
+            y_col='Win Rate (%)'
         )
         ax2.axhline(50, color='red', linestyle='--', linewidth=1, alpha=0.7)
         ax2.set_title(f'Win Rate vs {baseline_model}')
@@ -356,12 +608,12 @@ def create_performance_heatmap(
             )
             
             # Plot heatmap
-            sns.heatmap(
-                pivot,
+            _create_matplotlib_heatmap(
                 ax=axes[idx],
-                cmap='YlOrRd',
+                data=pivot,
                 annot=True,
                 fmt='.3f',
+                cmap='YlOrRd',
                 cbar_kws={'label': metric.replace('_', ' ').title()}
             )
             axes[idx].set_title(model_name)

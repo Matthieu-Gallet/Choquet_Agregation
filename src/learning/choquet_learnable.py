@@ -11,10 +11,10 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.preprocessing import LabelEncoder
 from scipy.optimize import minimize
 
+from learning.optimize.gradient_descent import GD_minimize
+from learning.optimize.objective_functions import objective_tnorm, objective
 from fuzzy_measure.classical import *
 from fuzzy_measure.tnorm import *
-from optimize.gradient_descent import GD_minimize
-from optimize.objective_functions import objective_tnorm, objective
 
 def preprocess(x, n):
     """
