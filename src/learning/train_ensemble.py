@@ -12,7 +12,7 @@ import yaml
 import hashlib
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
-from joblib import Parallel, delayed
+from sklearn.utils.parallel import Parallel, delayed
 from tqdm import tqdm
 import warnings
 import sys
@@ -212,7 +212,8 @@ def train_single_seed(
     class_names: Dict,
     group_names: Dict,
     output_dir: Path,
-    sweep_params: Dict = None
+    sweep_params: Dict = None,
+    quiet: bool = False
 ) -> None:
     """
     Train models for a single seed.
@@ -237,10 +238,13 @@ def train_single_seed(
         Output directory for results.
     sweep_params : dict, optional
         Parameters to override for sweep.
+    quiet : bool
+        If True, suppress verbose output.
     """
-    print(f"\n{'='*80}")
-    print(f"SEED: {seed}")
-    print(f"{'='*80}")
+    if not quiet:
+        print(f"\n{'='*80}")
+        print(f"SEED: {seed}")
+        print(f"{'='*80}")
     
     # Prepare split parameters
     split_params = {
@@ -254,7 +258,7 @@ def train_single_seed(
         'n_splits': config['dataset']['n_splits'],
         'label_noise_percentage': config['noise']['label_noise_percentage'],
         'data_noise_std': config['noise']['data_noise_std'],
-        'verbose': False
+        'verbose': not quiet
     }
     
     # Override with sweep parameters if provided
@@ -273,7 +277,8 @@ def train_single_seed(
     X_test = data['X_test']
     y_test = data['y_test']
     
-    print(f"  [TRAIN] Data loaded: Train={len(X_train)}, Test={len(X_test)}")
+    if not quiet:
+        print(f"  [TRAIN] Data loaded: Train={len(X_train)}, Test={len(X_test)}")
     
     # Train and evaluate models
     train_results, test_results, scores_dict = train_and_evaluate_models(
@@ -299,7 +304,8 @@ def train_single_seed(
         scores_df.insert(0, 'seed', seed)
         scores_df.to_csv(output_dir / 'scores.csv', index=False)
     
-    print(f"Results saved to {output_dir}")
+    if not quiet:
+        print(f"Results saved to {output_dir}")
 
 
 def run_single_sweep(
@@ -313,7 +319,8 @@ def run_single_sweep(
     param_name: str,
     param_value: Any,
     n_jobs: int = -1,
-    loader: 'MLDatasetLoader' = None
+    loader: 'MLDatasetLoader' = None,
+    quiet: bool = False
 ) -> None:
     """
     Run training for a single sweep parameter value across all seeds.
@@ -342,10 +349,13 @@ def run_single_sweep(
         Number of parallel jobs.
     loader : MLDatasetLoader, optional
         Dataset loader for reloading data (needed for window_size sweep).
+    quiet : bool
+        If True, suppress verbose output.
     """
-    print(f"\n{'='*80}")
-    print(f"SWEEP: {param_name} = {param_value}")
-    print(f"{'='*80}")
+    if not quiet:
+        print(f"\n{'='*80}")
+        print(f"SWEEP: {param_name} = {param_value}")
+        print(f"{'='*80}")
     
     # Create sweep directory
     sweep_dir = base_output_dir / f"sweep_{param_name}_{param_value}"
@@ -355,7 +365,8 @@ def run_single_sweep(
         if loader is None:
             raise ValueError("loader must be provided for window_size sweep")
         
-        print(f"Reloading data with window_size={param_value}...")
+        if not quiet:
+            print(f"Reloading data with window_size={param_value}...")
         X_sweep, y_sweep, groups_sweep, class_names_sweep, group_names_sweep = load_and_extract_data(
             loader=loader,
             class_pair=tuple(config['dataset']['class_pair']),
@@ -370,9 +381,13 @@ def run_single_sweep(
             max_mask_value=config['dataset'].get('max_mask_value', 1),
             max_mask_percentage=config['dataset'].get('max_mask_percentage', 0.0),
             min_valid_percentage=config['dataset'].get('min_valid_percentage', 100.0),
-            verbose=False
+            verbose=not quiet
         )
-        print(f"Data reloaded: {len(X_sweep)} samples")
+        if not quiet:
+            print(f"Data reloaded: {len(X_sweep)} samples")
+        else:
+            print(f"Data reloaded: {len(X_sweep)} samples")
+            print("Running calculations...\n")
         sweep_params = None  # No need to pass window_size to split
     else:
         # For other parameters, use preloaded data
@@ -383,7 +398,7 @@ def run_single_sweep(
     # Run across all seeds in parallel
     n_seeds = config['training']['n_seeds']
     
-    Parallel(n_jobs=n_jobs)(
+    Parallel(n_jobs=n_jobs, backend='threading')(
         delayed(train_single_seed)(
             seed=seed,
             config=config,
@@ -393,9 +408,10 @@ def run_single_sweep(
             class_names=class_names_sweep,
             group_names=group_names_sweep,
             output_dir=sweep_dir / f"seed_{seed:02d}",
-            sweep_params=sweep_params
+            sweep_params=sweep_params,
+            quiet=quiet
         )
-        for seed in tqdm(range(n_seeds), desc=f"Seeds ({param_name}={param_value})")
+        for seed in tqdm(range(n_seeds), desc=f"Seeds ({param_name}={param_value})", disable=quiet)
     )
 
 
@@ -407,7 +423,8 @@ def run_double_sweep(
     class_names: Dict,
     group_names: Dict,
     base_output_dir: Path,
-    n_jobs: int = -1
+    n_jobs: int = -1,
+    quiet: bool = False
 ) -> None:
     """
     Run training for double parameter sweep.
@@ -430,17 +447,20 @@ def run_double_sweep(
         Base output directory.
     n_jobs : int, default=-1
         Number of parallel jobs.
+    quiet : bool
+        If True, suppress verbose output.
     """
     param1_name = config['double_sweep']['param1_name']
     param1_values = config['double_sweep']['param1_values']
     param2_name = config['double_sweep']['param2_name']
     param2_values = config['double_sweep']['param2_values']
     
-    print(f"\n{'#'*80}")
-    print(f"# DOUBLE SWEEP")
-    print(f"# {param1_name}: {param1_values}")
-    print(f"# {param2_name}: {param2_values}")
-    print(f"{'#'*80}")
+    if not quiet:
+        print(f"\n{'#'*80}")
+        print(f"# DOUBLE SWEEP")
+        print(f"# {param1_name}: {param1_values}")
+        print(f"# {param2_name}: {param2_values}")
+        print(f"{'#'*80}")
     
     n_seeds = config['training']['n_seeds']
     
@@ -448,9 +468,10 @@ def run_double_sweep(
     for param1_value in param1_values:
         # Loop over second parameter
         for param2_value in param2_values:
-            print(f"\n{'='*80}")
-            print(f"SWEEP: {param1_name}={param1_value}, {param2_name}={param2_value}")
-            print(f"{'='*80}")
+            if not quiet:
+                print(f"\n{'='*80}")
+                print(f"SWEEP: {param1_name}={param1_value}, {param2_name}={param2_value}")
+                print(f"{'='*80}")
             
             # Create directory name
             sweep_dir = base_output_dir / f"{param1_name}_{param1_value}_{param2_name}_{param2_value}"
@@ -462,7 +483,7 @@ def run_double_sweep(
             }
             
             # Run across all seeds in parallel
-            Parallel(n_jobs=n_jobs)(
+            Parallel(n_jobs=n_jobs, backend='threading')(
                 delayed(train_single_seed)(
                     seed=seed,
                     config=config,
@@ -472,11 +493,13 @@ def run_double_sweep(
                     class_names=class_names,
                     group_names=group_names,
                     output_dir=sweep_dir / f"seed_{seed:02d}",
-                    sweep_params=sweep_params
+                    sweep_params=sweep_params,
+                    quiet=quiet
                 )
                 for seed in tqdm(
                     range(n_seeds),
-                    desc=f"Seeds ({param1_name}={param1_value}, {param2_name}={param2_value})"
+                    desc=f"Seeds ({param1_name}={param1_value}, {param2_name}={param2_value})",
+                    disable=quiet
                 )
             )
 
@@ -529,10 +552,16 @@ def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
         max_mask_value=config['dataset'].get('max_mask_value', 1),
         max_mask_percentage=config['dataset'].get('max_mask_percentage', 0.0),
         min_valid_percentage=config['dataset'].get('min_valid_percentage', 100.0),
-        verbose=True
+        verbose=not quiet
     )
     
-    print(f"Data extracted: {len(X)} samples\n")
+    if not quiet:
+        print(f"Data extracted: {len(X)} samples")
+        print("\nRunning calculations...\n")
+              
+    else:
+        print(f"Data extracted: {len(X)} samples")
+        print("Running calculations...\n")
     
     # Check for sweep configurations
     has_double_sweep = 'double_sweep' in config and config['double_sweep'] is not None
@@ -540,7 +569,7 @@ def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
     
     if has_double_sweep:
         # Run double sweep
-        run_double_sweep(config, X, y, groups, class_names, group_names, base_output_dir, n_jobs=n_jobs)
+        run_double_sweep(config, X, y, groups, class_names, group_names, base_output_dir, n_jobs=n_jobs, quiet=quiet)
     
     elif has_single_sweep:
         # Run single parameter sweep
@@ -550,7 +579,7 @@ def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
         for param_value in param_values:
             run_single_sweep(
                 config, X, y, groups, class_names, group_names, base_output_dir,
-                param_name, param_value, n_jobs=n_jobs, loader=loader
+                param_name, param_value, n_jobs=n_jobs, loader=loader, quiet=quiet
             )
     
     else:
@@ -558,7 +587,7 @@ def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
         print("No sweep detected. Running with default parameters...\n")
         n_seeds = config['training']['n_seeds']
         
-        Parallel(n_jobs=n_jobs)(
+        Parallel(n_jobs=n_jobs, backend='threading')(
             delayed(train_single_seed)(
                 seed=seed,
                 config=config,
@@ -568,9 +597,10 @@ def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
                 class_names=class_names,
                 group_names=group_names,
                 output_dir=base_output_dir / f"seed_{seed:02d}",
-                sweep_params=None
+                sweep_params=None,
+                quiet=quiet
             )
-            for seed in tqdm(range(n_seeds), desc="Seeds")
+            for seed in tqdm(range(n_seeds), desc="Seeds", disable=quiet)
         )
     
     print(f"\n{'='*80}")

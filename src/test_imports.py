@@ -57,9 +57,7 @@ def test_imports():
     try:
         from evaluation import (
             aggregate_multiple_results,
-            compute_statistics,
-            create_boxplots,
-            create_comparison_plots
+            compute_statistics
         )
         tests.append(("evaluation", True, None))
         print("✓ evaluation module imports OK")
@@ -93,41 +91,6 @@ def test_imports():
         return False
 
 
-def test_config():
-    """Test that configuration file exists and can be loaded."""
-    print("\n" + "="*60)
-    print("Testing configuration...")
-    
-    config_path = Path(__file__).parent / 'config' / 'config.yaml'
-    
-    if not config_path.exists():
-        print(f"✗ Config file not found: {config_path}")
-        return False
-    
-    try:
-        import yaml
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-        
-        # Check required sections
-        required_sections = ['dataset', 'noise', 'training', 'models', 'choquet']
-        missing = [s for s in required_sections if s not in config]
-        
-        if missing:
-            print(f"✗ Missing config sections: {missing}")
-            return False
-        
-        print(f"✓ Config file OK: {config_path}")
-        print(f"  - Sections: {', '.join(config.keys())}")
-        print(f"  - Models: {len(config['models'])}")
-        print(f"  - Seeds: {config['training']['n_seeds']}")
-        return True
-        
-    except Exception as e:
-        print(f"✗ Error loading config: {e}")
-        return False
-
-
 def test_structure():
     """Test that all expected files and directories exist."""
     print("\n" + "="*60)
@@ -138,7 +101,6 @@ def test_structure():
     expected = {
         'files': [
             'main.py',
-            'config/config.yaml',
             'dataset/__init__.py',
             'dataset/dataloader.py',
             'dataset/load_dataset.py',
@@ -154,7 +116,7 @@ def test_structure():
             'fuzzy_measure/tnorm.py',
             'evaluation/__init__.py',
             'evaluation/aggregate_results.py',
-            'evaluation/plot_results.py',
+            'evaluation/analyze_sweeps.py',
         ],
         'dirs': [
             'config',
@@ -198,7 +160,6 @@ def main():
     
     results = {
         'imports': test_imports(),
-        'config': test_config(),
         'structure': test_structure()
     }
     

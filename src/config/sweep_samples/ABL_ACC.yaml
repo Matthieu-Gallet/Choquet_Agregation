@@ -4,7 +4,7 @@ dataset:
   data_path: "dataset/CPAZMaL.hdf5"
   class_pair: ["ABL", "ACC"]
   date: "20200804"
-  window_size: 7
+  window_size: 11
   skip_optim_offset: true
   n_splits: 4
   max_samples_per_class: 100  # Will be overridden by sweep
@@ -75,7 +75,7 @@ models:
 # Sweep on max_samples_per_class
 sweep:
   param_name: "max_samples_per_class"
-  values: [1, 2, 4, 10, 21, 46, 100, 215, 464, 1000]
+  values: [1, 2, 4, 10, 21, 46, 100, 215, 464, 1000, 1500]
 
 choquet:
   optimizer_weight: "L-BFGS-B"

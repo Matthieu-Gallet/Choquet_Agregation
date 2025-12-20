@@ -194,19 +194,14 @@ def create_sweep_boxplot(
     ax.set_xlabel(sweep_param.replace('_', ' ').title(), fontsize=12)
     ax.set_ylabel('F1 Score', fontsize=12)
     
-    if title:
-        ax.set_title(title, fontsize=14, fontweight='bold')
-    else:
-        ax.set_title(f'F1 Score vs {sweep_param.replace("_", " ").title()}', 
-                     fontsize=14, fontweight='bold')
-    
-    # Create legend
+    # Create legend below plot with all items in one row
     legend_elements = [
         plt.Line2D([0], [0], color=COLORS.get(m, '#808080'), linewidth=8, 
                    label=m.replace('_', ' '))
         for m in methods
     ]
-    ax.legend(handles=legend_elements, loc='best', framealpha=0.9)
+    ax.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, -0.12), 
+              ncol=len(methods), framealpha=0.9, frameon=True)
     
     ax.grid(True, alpha=0.3, axis='y')
     plt.tight_layout()
@@ -214,6 +209,8 @@ def create_sweep_boxplot(
     # Save if path provided
     if output_path:
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Change extension to .pdf
+        output_path = output_path.with_suffix('.pdf')
         fig.savefig(output_path, dpi=300, bbox_inches='tight')
         print(f"Saved: {output_path}")
     
@@ -368,7 +365,7 @@ def analyze_results_directory(
                 df=df,
                 sweep_param='window_size',
                 metric='test_f1',
-                output_path=output_dir / 'sweep_window_size.png',
+                output_path=output_dir / 'sweep_window_size.pdf',
                 title=f'{class_pair[0]} vs {class_pair[1]} - Window Size Sweep'
             )
         except Exception as e:
@@ -381,7 +378,7 @@ def analyze_results_directory(
                 df=df,
                 sweep_param='max_samples_per_class',
                 metric='test_f1',
-                output_path=output_dir / 'sweep_max_samples.png',
+                output_path=output_dir / 'sweep_max_samples.pdf',
                 title=f'{class_pair[0]} vs {class_pair[1]} - Max Samples Sweep'
             )
         except Exception as e:

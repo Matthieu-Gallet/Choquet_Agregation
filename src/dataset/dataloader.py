@@ -44,8 +44,6 @@ def add_label_noise(y: np.ndarray, noise_percentage: float, seed: int = 42) -> n
     # Flip the labels (0 -> 1, 1 -> 0)
     y_noisy[flip_indices] = 1 - y_noisy[flip_indices]
     
-    print(f"  [NOISE] Flipped {n_flip}/{n_samples} labels ({noise_percentage}%)")
-    
     return y_noisy
 
 
@@ -74,8 +72,6 @@ def add_data_noise(X: np.ndarray, noise_std: float, seed: int = 42) -> np.ndarra
     noise = np.random.normal(0, noise_std, X.shape)
     X_noisy = X + noise
     
-    print(f"  [NOISE] Added Gaussian noise (std={noise_std}) to data")
-    
     return X_noisy
 
 
@@ -84,7 +80,8 @@ def filter_max_samples_per_class(
     y: np.ndarray,
     groups: np.ndarray,
     max_samples_per_class: Optional[int],
-    seed: int = 42
+    seed: int = 42,
+    verbose: bool = True
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Filter the dataset to have at most max_samples_per_class for each class.
@@ -101,6 +98,8 @@ def filter_max_samples_per_class(
         Maximum number of samples per class. If None, no filtering.
     seed : int, default=42
         Random seed for reproducibility.
+    verbose : bool, default=True
+        Whether to print information.
 
     Returns
     -------
@@ -126,10 +125,12 @@ def filter_max_samples_per_class(
                 replace=False
             )
             selected_indices.extend(sampled_indices)
-            print(f"  [FILTER] Class {class_label}: {n_class} -> {max_samples_per_class} samples")
+            if verbose:
+                print(f"  [FILTER] Class {class_label}: {n_class} -> {max_samples_per_class} samples")
         else:
             selected_indices.extend(class_indices)
-            print(f"  [FILTER] Class {class_label}: {n_class} samples (kept all)")
+            if verbose:
+                print(f"  [FILTER] Class {class_label}: {n_class} samples (kept all)")
     
     selected_indices = np.array(selected_indices)
     
@@ -142,6 +143,7 @@ def split_train_test_groupkfold(
     groups: np.ndarray,
     n_splits: int = 5,
     random_state: int = 42,
+    verbose: bool = True
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Split data into train and test sets using GroupKFold.
@@ -160,6 +162,8 @@ def split_train_test_groupkfold(
         Number of folds for GroupKFold.
     random_state : int, default=42
         Random seed for reproducibility.
+    verbose : bool, default=True
+        Whether to print information.
 
     Returns
     -------
@@ -184,7 +188,8 @@ def split_train_test_groupkfold(
     fold_idx = np.random.randint(0, n_splits)
     train_idx, test_idx = folds[fold_idx]
     
-    print(f"  [SPLIT] Selected fold {fold_idx} randomly from {n_splits} splits")
+    if verbose:
+        print(f"  [SPLIT] Selected fold {fold_idx} randomly from {n_splits} splits")
     
     X_train = X[train_idx]
     X_test = X[test_idx]
@@ -193,16 +198,17 @@ def split_train_test_groupkfold(
     groups_train = groups[train_idx]
     groups_test = groups[test_idx]
     
-    unique_classes = np.unique(y)
-    print(f"  [SPLIT] Using first fold from {n_splits} splits")
-    print(f"  [SPLIT] Train: {len(X_train)} samples, Test: {len(X_test)} samples")
-    for class_id in unique_classes:
-        train_count = np.sum(y_train == class_id)
-        test_count = np.sum(y_test == class_id)
-        train_ratio = train_count / len(y_train) * 100
-        test_ratio = test_count / len(y_test) * 100
-        print(f"  [SPLIT] Class {class_id}: Train={train_count} ({train_ratio:.1f}%), Test={test_count} ({test_ratio:.1f}%)")
-    print(f"  [SPLIT] Train groups: {len(np.unique(groups_train))}, Test groups: {len(np.unique(groups_test))}")
+    if verbose:
+        unique_classes = np.unique(y)
+        print(f"  [SPLIT] Using first fold from {n_splits} splits")
+        print(f"  [SPLIT] Train: {len(X_train)} samples, Test: {len(X_test)} samples")
+        for class_id in unique_classes:
+            train_count = np.sum(y_train == class_id)
+            test_count = np.sum(y_test == class_id)
+            train_ratio = train_count / len(y_train) * 100
+            test_ratio = test_count / len(y_test) * 100
+            print(f"  [SPLIT] Class {class_id}: Train={train_count} ({train_ratio:.1f}%), Test={test_count} ({test_ratio:.1f}%)")
+        print(f"  [SPLIT] Train groups: {len(np.unique(groups_train))}, Test groups: {len(np.unique(groups_test))}")
     
     return X_train, X_test, y_train, y_test, groups_train, groups_test
 
@@ -269,17 +275,9 @@ def load_and_extract_data(
     """
     class_0, class_1 = class_pair
     
-    print(f"\n{'='*70}")
-    print(f"Binary Classification: {class_0} (0) vs {class_1} (1)")
-    print(f"{'='*70}")
-    print(f"Parameters:")
-    print(f"  - Date: {date}")
-    print(f"  - Orbit: {orbit}")
-    print(f"  - Polarization: {polarisation}")
-    print(f"  - Window size: {window_size}x{window_size}")
-    print(f"  - Scale type: {scale_type}")
-    print(f"  - Max mask: {max_mask_value}, {max_mask_percentage}%")
-    print(f"  - Min valid: {min_valid_percentage}%\n")
+    if verbose:
+        print(f"  [DATA] Binary classification: {class_0} (0) vs {class_1} (1)")
+        print(f"  [DATA] Parameters: date={date}, orbit={orbit}, window={window_size}x{window_size}, scale={scale_type}")
     
     X_all = []
     y_all = []
@@ -302,7 +300,7 @@ def load_and_extract_data(
         group_to_class[group] = (class_1, 1)
     
     # Process all groups
-    pbar = tqdm(unique_groups, desc="Groups", unit="grp")
+    pbar = tqdm(unique_groups, desc="Groups", unit="grp", disable=not verbose)
     for group_name in pbar:
         class_name, class_label = group_to_class[group_name]
         
@@ -375,12 +373,7 @@ def load_and_extract_data(
     group_names = {v: k for k, v in group_to_int.items()}
     
     if verbose:
-        print(f"\n{'='*70}")
-        print(f"Extraction Results:")
-        print(f"  - Total windows: {len(X)}")
-        print(f"  - X.shape: {X.shape}")
-        print(f"  - y distribution: {np.unique(y, return_counts=True)}")
-        print(f"  - Unique groups: {len(np.unique(groups))}")
+        print(f"  [DATA] Extracted: {len(X)} windows, shape={X.shape}, groups={len(np.unique(groups))}")
     
     return X, y, groups, class_names, group_names
 
@@ -443,59 +436,40 @@ def prepare_train_test_split(
         - group_names: Mapping from int to group name
     """
     if verbose:
-        print(f"\n{'#'*70}")
-        print(f"# PREPARING TRAIN/TEST SPLIT")
-        print(f"{'#'*70}")
-        print(f"Seed: {seed}")
-        print(f"Max samples per class: {max_samples_per_class}")
+        print(f"  [TRAIN] Preparing split (seed={seed}, max_samples={max_samples_per_class})")
     
     # Split train/test
-    if verbose:
-        print(f"\n{'='*70}")
-        print("Splitting train/test with GroupKFold...")
-        
     X_train, X_test, y_train, y_test, groups_train, groups_test = split_train_test_groupkfold(
         X, y, groups,
         n_splits=n_splits,
-        random_state=seed
+        random_state=seed,
+        verbose=verbose
     )
     
     # Apply max samples per class filter to training set only
     if max_samples_per_class is not None:
         if verbose:
-            print(f"\n{'='*70}")
-            print("Filtering training set by max samples per class...")
+            print(f"  [TRAIN] Filtering to max {max_samples_per_class} samples per class...")
         X_train, y_train, groups_train = filter_max_samples_per_class(
-            X_train, y_train, groups_train, max_samples_per_class, seed
+            X_train, y_train, groups_train, max_samples_per_class, seed, verbose=verbose
         )
-        if verbose:
-            print(f"  After filtering: {len(X_train)} training samples")
     
     # Apply label noise to training set
     if label_noise_percentage > 0:
         if verbose:
-            print(f"\n{'='*70}")
-            print("Applying label noise to training set...")
+            print(f"  [TRAIN] Adding label noise ({label_noise_percentage}%)...")
         y_train = add_label_noise(y_train, label_noise_percentage, seed)
     
     # Apply data noise to training set
     if data_noise_std > 0:
         if verbose:
-            print(f"\n{'='*70}")
-            print("Applying data noise to training set...")
+            print(f"  [TRAIN] Adding data noise (std={data_noise_std})...")
         X_train = add_data_noise(X_train, data_noise_std, seed)
     
     # Final summary
     if verbose:
-        print(f"\n{'='*70}")
-        print("FINAL DATASET:")
-        print(f"  Train: {len(X_train)} samples")
-        print(f"    - Class 0 ({class_names[0]}): {np.sum(y_train == 0)}")
-        print(f"    - Class 1 ({class_names[1]}): {np.sum(y_train == 1)}")
-        print(f"  Test: {len(X_test)} samples")
-        print(f"    - Class 0 ({class_names[0]}): {np.sum(y_test == 0)}")
-        print(f"    - Class 1 ({class_names[1]}): {np.sum(y_test == 1)}")
-        print(f"{'='*70}\n")
+        print(f"  [DATA] Train: {len(X_train)} samples ({class_names[0]}:{np.sum(y_train == 0)}, {class_names[1]}:{np.sum(y_train == 1)})")
+        print(f"  [DATA] Test: {len(X_test)} samples ({class_names[0]}:{np.sum(y_test == 0)}, {class_names[1]}:{np.sum(y_test == 1)})")
     
     return {
         'X_train': X_train,

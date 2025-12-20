@@ -82,56 +82,53 @@ N_JOBS=10
 WINDOW_SIZE=7
 MAX_SAMPLES=46
 
-# Change to src directory for Python commands
-cd src
-
 case $choice in
     1)
         echo ""
         echo "Running samples sweep..."
         if [ -n "$DATA_PATH" ]; then
-            python main_sweep.py --mode samples --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
+            python src/main_sweep.py --mode samples --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
         else
-            python main_sweep.py --mode samples --n_jobs $N_JOBS $VERBOSE
+            python src/main_sweep.py --mode samples --n_jobs $N_JOBS $VERBOSE
         fi
         
         echo ""
         echo "Analyzing results..."
-        python evaluation/analyze_sweeps.py \
-            --results_dir results \
-            --figures_dir figures \
+        python src/evaluation/analyze_sweeps.py \
+            --results_dir src/results \
+            --figures_dir src/figures \
             --max_samples $MAX_SAMPLES
         ;;
     2)
         echo ""
         echo "Running window sweep..."
         if [ -n "$DATA_PATH" ]; then
-            python main_sweep.py --mode window --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
+            python src/main_sweep.py --mode window --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
         else
-            python main_sweep.py --mode window --n_jobs $N_JOBS $VERBOSE
+            python src/main_sweep.py --mode window --n_jobs $N_JOBS $VERBOSE
         fi
         
         echo ""
         echo "Analyzing results..."
-        python evaluation/analyze_sweeps.py \
-            --results_dir results \
-            --figures_dir figures \
+        python src/evaluation/analyze_sweeps.py \
+            --results_dir src/results \
+            --figures_dir src/figures \
             --window_size $WINDOW_SIZE
         ;;
     3)
         echo ""
         echo "Running all sweeps..."
         if [ -n "$DATA_PATH" ]; then
-            python main_sweep.py --mode all --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
+            python src/main_sweep.py --mode all --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
         else
-            python main_sweep.py --mode all --n_jobs $N_JOBS $VERBOSE
+            python src/main_sweep.py --mode all --n_jobs $N_JOBS $VERBOSE
         fi
         
         echo ""
         echo "Analyzing results..."
-        python evaluation/analyze_sweeps.py \
-            --results_dir results \
-            --figures_dir figures \
+        python src/evaluation/analyze_sweeps.py \
+            --results_dir src/results \
+            --figures_dir src/figures \
             --window_size $WINDOW_SIZE \
             --max_samples $MAX_SAMPLES
         ;;
@@ -144,15 +141,14 @@ case $choice in
         MS=${ms:-$MAX_SAMPLES}
         
         echo "Analyzing results..."
-        python evaluation/analyze_sweeps.py \
-            --results_dir results \
-            --figures_dir figures \
+        python src/evaluation/analyze_sweeps.py \
+            --results_dir src/results \
+            --figures_dir src/figures \
             --window_size $WS \
             --max_samples $MS
         ;;
     5)
         echo "Exiting..."
-        cd ..
         exit 0
         ;;
     *)
@@ -160,8 +156,6 @@ case $choice in
         exit 1
         ;;
 esac
-
-cd ..
 
 echo ""
 echo "=========================================="

@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, Tuple
 import warnings
 from tqdm import tqdm
-from joblib import Parallel, delayed
+from sklearn.utils.parallel import Parallel, delayed
 
 
 from .choquet_learnable import ChoquetClassifier, ChoquetTnormClassifier
@@ -372,7 +372,7 @@ def process_results_directory(
                 results_list.append(result)
     else:
         # Parallel processing
-        results_list = Parallel(n_jobs=n_jobs)(
+        results_list = Parallel(n_jobs=n_jobs, backend='threading')(
             delayed(train_and_evaluate_single_experiment)(exp_dir, config, verbose=False)
             for exp_dir in tqdm(exp_dirs, desc="Processing experiments")
         )
