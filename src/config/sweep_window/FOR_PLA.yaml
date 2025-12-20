@@ -1,0 +1,93 @@
+# Configuration for FOR vs PLA classification with window_size sweep
+
+dataset:
+  data_path: "dataset/CPAZMaL.hdf5"
+  class_pair: ["FOR", "PLA"]
+  date: "20200804"
+  window_size: 7  # Will be overridden by sweep
+  skip_optim_offset: true
+  n_splits: 4
+  max_samples_per_class: 1
+  orbit: "DSC"
+  polarisation: ["HH", "HV"]
+  scale_type: "amplitude"
+  max_mask_value: 2
+  max_mask_percentage: 40.0
+
+noise:
+  label_noise_percentage: 0.0
+  data_noise_std: 0.0
+
+training:
+  n_seeds: 10
+  save_scores: true
+
+models:
+  - name: "LR"
+    type: "LogisticRegression"
+    params:
+      max_iter: 1000
+  
+  - name: "RF"
+    type: "RandomForestClassifier"
+    params:
+      n_jobs: -1
+      n_estimators: 100
+  
+  - name: "KNN"
+    type: "KNeighborsClassifier"
+    params:
+      n_jobs: -1
+      n_neighbors: 2
+  
+  - name: "SVM"
+    type: "SVC"
+    params:
+      probability: true
+      kernel: "linear"
+  
+  - name: "SVMC"
+    type: "SVC"
+    params:
+      probability: true
+      kernel: "rbf"
+  
+  - name: "Ada"
+    type: "AdaBoostClassifier"
+    params:
+      n_estimators: 100
+  
+  - name: "GBM"
+    type: "GradientBoostingClassifier"
+    params:
+      n_estimators: 100
+  
+  - name: "DT"
+    type: "DecisionTreeClassifier"
+    params: {}
+  
+  - name: "MLP"
+    type: "MLPClassifier"
+    params:
+      hidden_layer_sizes: [100, 50]
+      max_iter: 500
+
+# Sweep on window_size
+sweep:
+  param_name: "window_size"
+  values: [2,  4,  5,  7, 10, 13, 19, 25, 35, 48]
+
+choquet:
+  optimizer_weight: "L-BFGS-B"
+  optimizer_power: "L-BFGS-B"
+  optimizer_tnorm: "GD"
+  alpha: null
+  niter: 1000
+  stpa_weight: 0.005
+  stpy_weight: 0.005
+  stpa_power: 0.001
+  stpy_power: 0.001
+  lr_penalty: null
+  lr_max_iter: 1000
+  process_data: true
+  jac: true

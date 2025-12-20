@@ -11,7 +11,5 @@ __pycache__/
 *.pyc
 .env
 .ipynb_checkpoints/
-src/config/*
 src/results/*
 src/doc/*
-

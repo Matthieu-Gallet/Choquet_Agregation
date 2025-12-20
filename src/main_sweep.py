@@ -51,7 +51,7 @@ def override_data_path_in_config(config_path: str, data_path: str) -> str:
     return str(temp_config_path)
 
 
-def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = True, data_path: str = None):
+def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = True, data_path: str = None, verbose: bool = False):
     """
     Run a single experiment (training + optional aggregation).
     
@@ -65,6 +65,8 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
         Whether to run Choquet aggregation after training.
     data_path : str, optional
         Override data_path in config.
+    verbose : bool
+        Whether to print detailed output.
     """
     # Override data_path if provided
     if data_path:
@@ -84,6 +86,9 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
         "--config", config_path,
         "--n_jobs", str(n_jobs)
     ]
+    
+    if not verbose:
+        train_cmd.append("--quiet")
     
     print(f"Command: {' '.join(train_cmd)}\n")
     result = subprocess.run(train_cmd, check=False)
@@ -108,6 +113,9 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
             "--n_jobs", str(n_jobs)
         ]
         
+        if not verbose:
+            agg_cmd.append("--quiet")
+        
         print(f"Command: {' '.join(agg_cmd)}\n")
         result = subprocess.run(agg_cmd, check=False)
         
@@ -122,7 +130,7 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
         return True
 
 
-def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = True, data_path: str = None):
+def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = True, data_path: str = None, verbose: bool = False):
     """
     Run all sweep experiments for a given mode.
     
@@ -136,6 +144,8 @@ def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = Tr
         Whether to run Choquet aggregation after each training.
     data_path : str, optional
         Override data_path in all configs.
+    verbose : bool
+        Whether to print detailed output.
     """
     base_dir = Path("src/config")
     
@@ -195,7 +205,8 @@ def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = Tr
             config_path=str(config_file),
             n_jobs=n_jobs,
             run_aggregation=run_aggregation,
-            data_path=data_path
+            data_path=data_path,
+            verbose=verbose
         )
         
         if success:
@@ -274,13 +285,20 @@ Examples:
         help="Override data_path in all config files"
     )
     
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output (prints all model scores)"
+    )
+    
     args = parser.parse_args()
     
     run_sweep_experiments(
         mode=args.mode,
         n_jobs=args.n_jobs,
         run_aggregation=not args.skip_aggregation,
-        data_path=args.data_path
+        data_path=args.data_path,
+        verbose=args.verbose
     )
 
 

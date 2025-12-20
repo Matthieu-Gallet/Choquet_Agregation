@@ -37,12 +37,11 @@ plt.rcParams.update({
 # Color scheme
 COLORS = {
     'Choquet_Power': '#ff7f0e',           # Orange
-    'Choquet_Power_Tnorm': '#ff9e4a',     # Light orange
-    'Choquet_Power_Tnorm2': '#ffb366',    # Lighter orange
+    'Choquet_Power_TN3': '#ff9e4a',     # Light orange
+    'Choquet_Power_TN6': '#ffb366',    # Lighter orange
     'Choquet_Weight': '#1f77b4',          # Blue
-    'Choquet_Weight_Tnorm': '#5499c7',    # Light blue
-    'Choquet_Weight_Tnorm2': '#85b8d9',   # Lighter blue
-    'Choquet_Tnorm': '#9467bd',           # Purple
+    'Choquet_Weight_TN3': '#5499c7',    # Light blue
+    'Choquet_Weight_TN6': '#85b8d9',   # Lighter blue
     'LogisticRegression': '#000000',      # Black
 }
 

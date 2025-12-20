@@ -5,6 +5,7 @@ set -e  # Exit on error
 
 # Parse command line arguments
 DATA_PATH=""
+VERBOSE=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -12,9 +13,13 @@ while [[ $# -gt 0 ]]; do
             DATA_PATH="$2"
             shift 2
             ;;
+        --verbose)
+            VERBOSE="--verbose"
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--data-path /path/to/data.hdf5]"
+            echo "Usage: $0 [--data-path /path/to/data.hdf5] [--verbose]"
             exit 1
             ;;
     esac
@@ -85,9 +90,9 @@ case $choice in
         echo ""
         echo "Running samples sweep..."
         if [ -n "$DATA_PATH" ]; then
-            python main_sweep.py --mode samples --n_jobs $N_JOBS --data-path "$DATA_PATH"
+            python main_sweep.py --mode samples --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
         else
-            python main_sweep.py --mode samples --n_jobs $N_JOBS
+            python main_sweep.py --mode samples --n_jobs $N_JOBS $VERBOSE
         fi
         
         echo ""
@@ -101,9 +106,9 @@ case $choice in
         echo ""
         echo "Running window sweep..."
         if [ -n "$DATA_PATH" ]; then
-            python main_sweep.py --mode window --n_jobs $N_JOBS --data-path "$DATA_PATH"
+            python main_sweep.py --mode window --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
         else
-            python main_sweep.py --mode window --n_jobs $N_JOBS
+            python main_sweep.py --mode window --n_jobs $N_JOBS $VERBOSE
         fi
         
         echo ""
@@ -117,9 +122,9 @@ case $choice in
         echo ""
         echo "Running all sweeps..."
         if [ -n "$DATA_PATH" ]; then
-            python main_sweep.py --mode all --n_jobs $N_JOBS --data-path "$DATA_PATH"
+            python main_sweep.py --mode all --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
         else
-            python main_sweep.py --mode all --n_jobs $N_JOBS
+            python main_sweep.py --mode all --n_jobs $N_JOBS $VERBOSE
         fi
         
         echo ""

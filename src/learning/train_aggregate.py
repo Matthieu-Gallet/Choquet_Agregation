@@ -397,7 +397,7 @@ def process_results_directory(
     return df
 
 
-def main(config_path: str, results_dir: str = None, n_jobs: int = -1):
+def main(config_path: str, results_dir: str = None, n_jobs: int = -1, quiet: bool = False):
     """
     Main function to process ensemble classifier results with Choquet aggregation.
     
@@ -409,6 +409,8 @@ def main(config_path: str, results_dir: str = None, n_jobs: int = -1):
         Path to results directory. If None, uses config hash directory.
     n_jobs : int, default=-1
         Number of parallel jobs.
+    quiet : bool
+        If True, suppress verbose output.
     """
     print("="*80)
     print("CHOQUET AGGREGATION EVALUATION")
@@ -439,7 +441,7 @@ def main(config_path: str, results_dir: str = None, n_jobs: int = -1):
         results_base_dir=results_base_dir,
         config=config,
         n_jobs=n_jobs,
-        verbose=True
+        verbose=not quiet
     )
     
     # Compile ensemble scores if save_scores is enabled
@@ -537,10 +539,17 @@ if __name__ == "__main__":
         help='Number of parallel jobs (-1 for all cores)'
     )
     
+    parser.add_argument(
+        '--quiet',
+        action='store_true',
+        help='Suppress verbose output'
+    )
+    
     args = parser.parse_args()
     
     main(
         config_path=args.config,
         results_dir=args.results_dir,
-        n_jobs=args.n_jobs
+        n_jobs=args.n_jobs,
+        quiet=args.quiet
     )

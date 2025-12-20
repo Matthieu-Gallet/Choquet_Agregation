@@ -1,0 +1,93 @@
+# Configuration for ROC vs PLA classification with max_samples_per_class sweep
+
+dataset:
+  data_path: "dataset/CPAZMaL.hdf5"
+  class_pair: ["ROC", "PLA"]
+  date: "20200804"
+  window_size: 7
+  skip_optim_offset: true
+  n_splits: 4
+  max_samples_per_class: 100  # Will be overridden by sweep
+  orbit: "DSC"
+  polarisation: ["HH", "HV"]
+  scale_type: "amplitude"
+  max_mask_value: 2
+  max_mask_percentage: 40.0
+
+noise:
+  label_noise_percentage: 0.0
+  data_noise_std: 0.0
+
+training:
+  n_seeds: 10
+  save_scores: true
+
+models:
+  - name: "LR"
+    type: "LogisticRegression"
+    params:
+      max_iter: 1000
+  
+  - name: "RF"
+    type: "RandomForestClassifier"
+    params:
+      n_jobs: -1
+      n_estimators: 100
+  
+  - name: "KNN"
+    type: "KNeighborsClassifier"
+    params:
+      n_jobs: -1
+      n_neighbors: 2
+  
+  - name: "SVM"
+    type: "SVC"
+    params:
+      probability: true
+      kernel: "linear"
+  
+  - name: "SVMC"
+    type: "SVC"
+    params:
+      probability: true
+      kernel: "rbf"
+  
+  - name: "Ada"
+    type: "AdaBoostClassifier"
+    params:
+      n_estimators: 100
+  
+  - name: "GBM"
+    type: "GradientBoostingClassifier"
+    params:
+      n_estimators: 100
+  
+  - name: "DT"
+    type: "DecisionTreeClassifier"
+    params: {}
+  
+  - name: "MLP"
+    type: "MLPClassifier"
+    params:
+      hidden_layer_sizes: [100, 50]
+      max_iter: 500
+
+# Sweep on max_samples_per_class
+sweep:
+  param_name: "max_samples_per_class"
+  values: [1, 2, 4, 10, 21, 46, 100, 215, 464, 1000]
+
+choquet:
+  optimizer_weight: "L-BFGS-B"
+  optimizer_power: "L-BFGS-B"
+  optimizer_tnorm: "GD"
+  alpha: null
+  niter: 1000
+  stpa_weight: 0.005
+  stpy_weight: 0.005
+  stpa_power: 0.001
+  stpy_power: 0.001
+  lr_penalty: null
+  lr_max_iter: 1000
+  process_data: true
+  jac: true

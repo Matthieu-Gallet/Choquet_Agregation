@@ -1,0 +1,117 @@
+# Configuration file for ensemble classifier training
+
+# Dataset parameters
+dataset:
+  data_path: "dataset/CPAZMaL.hdf5"
+  class_pair: ["ROC", "PLA"]  # Options: ["ABL", "ACC"], ["FOR", "PLA"], ["ROC", "ABL"], ["ROC", "PLA"]
+  date: "20200804"
+  window_size: 7
+  skip_optim_offset: true
+  n_splits: 4  # Increased to find more balanced splits
+  max_samples_per_class: 1000  # null means no limit, or specify an integer
+  # Data preprocessing options
+  orbit: "DSC"  # "ASC" or "DSC"
+  polarisation: ["HH", "HV"]  # List of polarizations
+  scale_type: "amplitude"  # "intensity", "amplitude", or "log10"
+  max_mask_value: 2  # Maximum accepted mask value
+  max_mask_percentage: 40.0  # Max percentage of pixels with mask > max_mask_value
+
+# Noise parameters
+noise:
+  label_noise_percentage: 0.0  # 0-100
+  data_noise_std: 0.0  # Standard deviation of Gaussian noise
+
+# Training parameters
+training:
+  n_seeds: 10  # Number of different seeds to run
+  save_scores: true  # Save model scores in txt report
+
+# Models to train
+models:
+  - name: "LR"
+    type: "LogisticRegression"
+    params:
+      max_iter: 1000
+  
+  - name: "RF"
+    type: "RandomForestClassifier"
+    params:
+      n_jobs: -1
+      n_estimators: 100
+  
+  - name: "KNN"
+    type: "KNeighborsClassifier"
+    params:
+      n_jobs: -1
+      n_neighbors: 2
+  
+  - name: "SVM"
+    type: "SVC"
+    params:
+      probability: true
+      kernel: "linear"
+  
+  - name: "SVMC"
+    type: "SVC"
+    params:
+      probability: true
+      kernel: "rbf"
+  
+  - name: "Ada"
+    type: "AdaBoostClassifier"
+    params:
+      n_estimators: 100
+  
+  - name: "GBM"
+    type: "GradientBoostingClassifier"
+    params:
+      n_estimators: 100
+  
+  - name: "DT"
+    type: "DecisionTreeClassifier"
+    params: {}
+  
+  - name: "MLP"
+    type: "MLPClassifier"
+    params:
+      hidden_layer_sizes: [100, 50]
+      max_iter: 500
+
+# Sweep parameters (optional)
+# If specified, will perform parameter sweep
+# sweep:
+#   param_name: "label_noise_percentage"  # Parameter to sweep (from noise section)
+#   values: [0, 5, 10, 15, 20]
+
+# Double sweep (optional)
+# If specified, will perform nested parameter sweeps
+# double_sweep:
+#   param1_name: "max_samples_per_class"
+#   param1_values: [50, 100, 200]
+#   param2_name: "label_noise_percentage"
+#   param2_values: [0, 5, 10, 15, 20]
+
+# Choquet aggregation parameters
+choquet:
+  # Classical Choquet parameters
+  optimizer_weight: "L-BFGS-B"  # Optimizer for Weight method
+  optimizer_power: "L-BFGS-B"   # Optimizer for Power method
+  optimizer_tnorm: "GD"          # Optimizer for T-norm methods (GD or L-BFGS-B)
+  
+  # T-norm specific parameters
+  alpha: null  # Initial alpha value (null for random)
+  niter: 1000  # Number of iterations for gradient descent
+  
+  # Gradient descent step sizes
+  stpa_weight: 0.005  # Step size for Weight T-norm alpha
+  stpy_weight: 0.005  # Step size for Weight T-norm y
+  stpa_power: 0.001   # Step size for Power T-norm alpha
+  stpy_power: 0.001   # Step size for Power T-norm y
+  
+  # Logistic regression baseline
+  lr_penalty: null  # null for no penalty, or "l1", "l2", "elasticnet"
+  lr_max_iter: 1000
+  
+  # General parameters
+  process_data: true
+  jac: true

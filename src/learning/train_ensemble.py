@@ -195,8 +195,6 @@ def train_and_evaluate_models(
                     'train_auc': train_auc,
                     'test_auc': test_auc
                 }
-                
-                print(f"  [TRAIN] {model_name}: F1={test_f1:.4f}, AUC={test_auc:.4f}")
         
         except Exception as e:
             print(f"  ERROR with {model_name}: {e}")
@@ -483,7 +481,7 @@ def run_double_sweep(
             )
 
 
-def main(config_path: str, n_jobs: int = -1):
+def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
     """
     Main training function.
     
@@ -493,6 +491,8 @@ def main(config_path: str, n_jobs: int = -1):
         Path to configuration YAML file.
     n_jobs : int, default=-1
         Number of parallel jobs (-1 for all cores).
+    quiet : bool
+        If True, suppress verbose output (no ensemble model scores).
     """
     print(f"Config: {config_path}\n")
     # Load configuration
@@ -585,7 +585,7 @@ def main(config_path: str, n_jobs: int = -1):
         
         try:
             from .train_aggregate import main as train_aggregate_main
-            train_aggregate_main(config_path=config_path, results_dir=str(base_output_dir), n_jobs=n_jobs)
+            train_aggregate_main(config_path=config_path, results_dir=str(base_output_dir), n_jobs=n_jobs, quiet=quiet)
             print(f"\n✅ Choquet aggregation completed successfully")
         except Exception as e:
             print(f"\n❌ ERROR in Choquet aggregation: {e}")
@@ -612,6 +612,12 @@ if __name__ == "__main__":
         help='Number of parallel jobs (-1 for all cores)'
     )
     
+    parser.add_argument(
+        '--quiet',
+        action='store_true',
+        help='Suppress verbose output (no ensemble model scores)'
+    )
+    
     args = parser.parse_args()
     
-    main(config_path=args.config, n_jobs=args.n_jobs)
+    main(config_path=args.config, n_jobs=args.n_jobs, quiet=args.quiet)
