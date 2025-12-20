@@ -30,33 +30,33 @@ if [ -n "$DATA_PATH" ]; then
     echo ""
 fi
 
-# Check if virtual environment exists
-if [ ! -d ".venv" ]; then
-    echo "Error: Virtual environment not found!"
-    echo "Please create it first:"
-    echo "  python -m venv .venv"
-    echo "  source .venv/bin/activate"
-    echo "  pip install -r requirements.txt"
-    exit 1
+# Run environment setup
+echo "Checking environment setup..."
+if [ -f "setup_env.sh" ]; then
+    bash setup_env.sh
+else
+    echo "Warning: setup_env.sh not found, skipping automated setup"
+    echo ""
 fi
 
 # Activate virtual environment
-echo "Activating virtual environment..."
-source .venv/bin/activate
+ENV_NAME="ChoquetLearning"
+ENV_PATH=".venv_$ENV_NAME"
 
-# Test imports
-echo ""
-echo "Testing module imports..."
-cd src
-python test_imports.py
-TEST_RESULT=$?
-
-if [ $TEST_RESULT -ne 0 ]; then
-    echo ""
-    echo "Import test failed! Please fix the issues before continuing."
+if [ -d "$ENV_PATH" ]; then
+    echo "Activating environment '$ENV_NAME'..."
+    source "$ENV_PATH/bin/activate"
+elif [ -d ".venv" ]; then
+    echo "Activating .venv environment..."
+    source .venv/bin/activate
+else
+    echo "[✗] Error: No virtual environment found!"
+    echo "Please run setup_env.sh first"
     exit 1
 fi
 
+echo ""
+echo "=========================================="
 echo ""
 echo "=========================================="
 echo "Ready to run sweep pipeline!"
@@ -77,53 +77,56 @@ N_JOBS=10
 WINDOW_SIZE=7
 MAX_SAMPLES=46
 
+# Change to src directory for Python commands
+cd src
+
 case $choice in
     1)
         echo ""
         echo "Running samples sweep..."
         if [ -n "$DATA_PATH" ]; then
-            python src/main_sweep.py --mode samples --n_jobs $N_JOBS --data-path "$DATA_PATH"
+            python main_sweep.py --mode samples --n_jobs $N_JOBS --data-path "$DATA_PATH"
         else
-            python src/main_sweep.py --mode samples --n_jobs $N_JOBS
+            python main_sweep.py --mode samples --n_jobs $N_JOBS
         fi
         
         echo ""
         echo "Analyzing results..."
-        python src/evaluation/analyze_sweeps.py \
-            --results_dir src/results \
-            --figures_dir src/figures \
+        python evaluation/analyze_sweeps.py \
+            --results_dir results \
+            --figures_dir figures \
             --max_samples $MAX_SAMPLES
         ;;
     2)
         echo ""
         echo "Running window sweep..."
         if [ -n "$DATA_PATH" ]; then
-            python src/main_sweep.py --mode window --n_jobs $N_JOBS --data-path "$DATA_PATH"
+            python main_sweep.py --mode window --n_jobs $N_JOBS --data-path "$DATA_PATH"
         else
-            python src/main_sweep.py --mode window --n_jobs $N_JOBS
+            python main_sweep.py --mode window --n_jobs $N_JOBS
         fi
         
         echo ""
         echo "Analyzing results..."
-        python src/evaluation/analyze_sweeps.py \
-            --results_dir src/results \
-            --figures_dir src/figures \
+        python evaluation/analyze_sweeps.py \
+            --results_dir results \
+            --figures_dir figures \
             --window_size $WINDOW_SIZE
         ;;
     3)
         echo ""
         echo "Running all sweeps..."
         if [ -n "$DATA_PATH" ]; then
-            python src/main_sweep.py --mode all --n_jobs $N_JOBS --data-path "$DATA_PATH"
+            python main_sweep.py --mode all --n_jobs $N_JOBS --data-path "$DATA_PATH"
         else
-            python src/main_sweep.py --mode all --n_jobs $N_JOBS
+            python main_sweep.py --mode all --n_jobs $N_JOBS
         fi
         
         echo ""
         echo "Analyzing results..."
-        python src/evaluation/analyze_sweeps.py \
-            --results_dir src/results \
-            --figures_dir src/figures \
+        python evaluation/analyze_sweeps.py \
+            --results_dir results \
+            --figures_dir figures \
             --window_size $WINDOW_SIZE \
             --max_samples $MAX_SAMPLES
         ;;
@@ -136,14 +139,15 @@ case $choice in
         MS=${ms:-$MAX_SAMPLES}
         
         echo "Analyzing results..."
-        python src/evaluation/analyze_sweeps.py \
-            --results_dir src/results \
-            --figures_dir src/figures \
+        python evaluation/analyze_sweeps.py \
+            --results_dir results \
+            --figures_dir figures \
             --window_size $WS \
             --max_samples $MS
         ;;
     5)
         echo "Exiting..."
+        cd ..
         exit 0
         ;;
     *)
@@ -151,6 +155,8 @@ case $choice in
         exit 1
         ;;
 esac
+
+cd ..
 
 echo ""
 echo "=========================================="
