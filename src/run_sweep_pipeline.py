@@ -40,7 +40,8 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
     # Run ensemble training
     train_cmd = [
         sys.executable,
-        "src/learning/train_ensemble.py",
+        "-m",
+        "src.learning.train_ensemble",
         "--config", config_path,
         "--n_jobs", str(n_jobs)
     ]
@@ -62,7 +63,8 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
         
         agg_cmd = [
             sys.executable,
-            "src/learning/train_aggregate.py",
+            "-m",
+            "src.learning.train_aggregate",
             "--config", config_path,
             "--n_jobs", str(n_jobs)
         ]
