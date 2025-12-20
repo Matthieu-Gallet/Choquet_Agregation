@@ -15,11 +15,43 @@ Usage:
 import argparse
 import subprocess
 import sys
+import yaml
 from pathlib import Path
 from datetime import datetime
 
 
-def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = True):
+def override_data_path_in_config(config_path: str, data_path: str) -> str:
+    """
+    Override data_path in config file temporarily.
+    
+    Parameters
+    ----------
+    config_path : str
+        Path to original config file.
+    data_path : str
+        New data path to use.
+    
+    Returns
+    -------
+    str
+        Path to temporary config file with overridden data_path.
+    """
+    # Load config
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Override data_path
+    config['dataset']['data_path'] = data_path
+    
+    # Save to temporary file
+    temp_config_path = Path(config_path).parent / f"temp_{Path(config_path).name}"
+    with open(temp_config_path, 'w') as f:
+        yaml.dump(config, f, default_flow_style=False)
+    
+    return str(temp_config_path)
+
+
+def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = True, data_path: str = None):
     """
     Run a single experiment (training + optional aggregation).
     
@@ -31,7 +63,14 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
         Number of parallel jobs.
     run_aggregation : bool
         Whether to run Choquet aggregation after training.
+    data_path : str, optional
+        Override data_path in config.
     """
+    # Override data_path if provided
+    if data_path:
+        print(f"Overriding data_path with: {data_path}")
+        config_path = override_data_path_in_config(config_path, data_path)
+    
     print(f"\n{'='*80}")
     print(f"Running experiment: {config_path}")
     print(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -50,10 +89,10 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
     result = subprocess.run(train_cmd, check=False)
     
     if result.returncode != 0:
-        print(f"\n❌ ERROR: Training failed for {config_path}")
+        print(f"\n ERROR: Training failed for {config_path}")
         return False
     
-    print(f"\n✅ Training completed successfully for {config_path}")
+    print(f"\n Training completed successfully for {config_path}")
     
     # Run Choquet aggregation
     if run_aggregation:
@@ -73,15 +112,17 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
         result = subprocess.run(agg_cmd, check=False)
         
         if result.returncode != 0:
-            print(f"\n❌ ERROR: Aggregation failed for {config_path}")
+            print(f"\n ERROR: Aggregation failed for {config_path}")
             return False
         
-        print(f"\n✅ Aggregation completed successfully for {config_path}")
-    
-    return True
+        print(f"\n Aggregation completed successfully for {config_path}")
+        # Clean up temporary config if it was created
+    if data_path and 'temp_' in config_path:
+        Path(config_path).unlink(missing_ok=True)
+        return True
 
 
-def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = True):
+def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = True, data_path: str = None):
     """
     Run all sweep experiments for a given mode.
     
@@ -93,6 +134,8 @@ def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = Tr
         Number of parallel jobs.
     run_aggregation : bool
         Whether to run Choquet aggregation after each training.
+    data_path : str, optional
+        Override data_path in all configs.
     """
     base_dir = Path("src/config")
     
@@ -124,12 +167,12 @@ def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = Tr
         print("ERROR: No config files found!")
         return
     
-    print(f"\n{'#'*80}")
-    print(f"# SWEEP PIPELINE - MODE: {mode.upper()}")
-    print(f"# Found {len(config_files)} configuration(s) to run")
-    print(f"# Parallel jobs: {n_jobs}")
-    print(f"# Run aggregation: {run_aggregation}")
-    print(f"{'#'*80}\n")
+    print(f"\n{'='*80}")
+    print(f"SWEEP PIPELINE - MODE: {mode.upper()}")
+    print(f"Found {len(config_files)} configuration(s) to run")
+    print(f"Parallel jobs: {n_jobs}")
+    print(f"Run aggregation: {run_aggregation}")
+    print(f"{'='*80}\n")
     
     # Display all configs
     print("Configuration files:")
@@ -144,14 +187,15 @@ def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = Tr
     start_time = datetime.now()
     
     for i, config_file in enumerate(config_files, 1):
-        print(f"\n{'#'*80}")
-        print(f"# Experiment {i}/{len(config_files)}")
-        print(f"{'#'*80}")
+        print(f"\n{'='*80}")
+        print(f"Experiment {i}/{len(config_files)}")
+        print(f"{'='*80}")
         
         success = run_experiment(
             config_path=str(config_file),
             n_jobs=n_jobs,
-            run_aggregation=run_aggregation
+            run_aggregation=run_aggregation,
+            data_path=data_path
         )
         
         if success:
@@ -163,9 +207,9 @@ def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = Tr
     duration = end_time - start_time
     
     # Summary
-    print(f"\n{'#'*80}")
-    print(f"# PIPELINE SUMMARY")
-    print(f"{'#'*80}")
+    print(f"\n{'='*80}")
+    print(f"PIPELINE SUMMARY")
+    print(f"{'='*80}")
     print(f"Total experiments: {len(config_files)}")
     print(f"Successful: {success_count}")
     print(f"Failed: {len(failed_configs)}")
@@ -178,7 +222,7 @@ def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = Tr
         for config_file in failed_configs:
             print(f"  - {config_file.relative_to(base_dir)}")
     
-    print(f"\n{'#'*80}\n")
+    print(f"\n{'='*80}\n")
 
 
 def main():
@@ -223,12 +267,20 @@ Examples:
         help="Skip Choquet aggregation (only run ensemble training)"
     )
     
+    parser.add_argument(
+        "--data-path",
+        type=str,
+        default=None,
+        help="Override data_path in all config files"
+    )
+    
     args = parser.parse_args()
     
     run_sweep_experiments(
         mode=args.mode,
         n_jobs=args.n_jobs,
-        run_aggregation=not args.skip_aggregation
+        run_aggregation=not args.skip_aggregation,
+        data_path=args.data_path
     )
 
 

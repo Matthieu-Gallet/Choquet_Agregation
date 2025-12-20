@@ -225,9 +225,33 @@ def train_and_evaluate_single_experiment(
     dict
         Dictionary containing metrics and experiment parameters.
     """
-    # Parse experiment parameters
+    # Parse experiment parameters from folder name
     folder_name = result_dir.name
     params = parse_folder_name(folder_name)
+    
+    # Check if parent directory is a sweep directory
+    parent_name = result_dir.parent.name
+    if parent_name.startswith('sweep_'):
+        # Extract sweep parameter and value
+        # Format: sweep_param_name_value (e.g., sweep_window_size_7, sweep_max_samples_per_class_100)
+        parts = parent_name.split('_')
+        if len(parts) >= 3:
+            # Find the index of 'sweep'
+            sweep_idx = parts.index('sweep')
+            # Everything after 'sweep' until the last part is the param name
+            # The last part is the value
+            param_parts = parts[sweep_idx + 1:]
+            if len(param_parts) >= 2:
+                param_value = param_parts[-1]
+                param_name = '_'.join(param_parts[:-1])
+                try:
+                    # Try to convert to appropriate type
+                    if '.' in param_value:
+                        params[param_name] = float(param_value)
+                    else:
+                        params[param_name] = int(param_value)
+                except ValueError:
+                    params[param_name] = param_value
     
     if verbose:
         print(f"\nProcessing: {folder_name}")
@@ -319,8 +343,18 @@ def process_results_directory(
     pd.DataFrame
         DataFrame containing all results.
     """
-    # Find all experiment directories
-    exp_dirs = [d for d in results_base_dir.iterdir() if d.is_dir() and (d / 'train.npy').exists()]
+    # Find all experiment directories (including those in sweep subdirectories)
+    exp_dirs = []
+    
+    # First check for direct seed directories (no sweep)
+    direct_dirs = [d for d in results_base_dir.iterdir() if d.is_dir() and (d / 'train.npy').exists()]
+    exp_dirs.extend(direct_dirs)
+    
+    # Then check for sweep directories
+    sweep_dirs = [d for d in results_base_dir.iterdir() if d.is_dir() and d.name.startswith('sweep_')]
+    for sweep_dir in sweep_dirs:
+        seed_dirs = [d for d in sweep_dir.iterdir() if d.is_dir() and (d / 'train.npy').exists()]
+        exp_dirs.extend(seed_dirs)
     
     if len(exp_dirs) == 0:
         print(f"No experiment directories found in {results_base_dir}")

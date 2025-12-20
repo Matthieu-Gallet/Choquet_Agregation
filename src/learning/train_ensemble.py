@@ -314,7 +314,8 @@ def run_single_sweep(
     base_output_dir: Path,
     param_name: str,
     param_value: Any,
-    n_jobs: int = -1
+    n_jobs: int = -1,
+    loader: 'MLDatasetLoader' = None
 ) -> None:
     """
     Run training for a single sweep parameter value across all seeds.
@@ -341,6 +342,8 @@ def run_single_sweep(
         Value of the parameter for this sweep.
     n_jobs : int, default=-1
         Number of parallel jobs.
+    loader : MLDatasetLoader, optional
+        Dataset loader for reloading data (needed for window_size sweep).
     """
     print(f"\n{'='*80}")
     print(f"SWEEP: {param_name} = {param_value}")
@@ -349,8 +352,35 @@ def run_single_sweep(
     # Create sweep directory
     sweep_dir = base_output_dir / f"sweep_{param_name}_{param_value}"
     
-    # Prepare sweep parameters
-    sweep_params = {param_name: param_value}
+    # Handle window_size sweep (requires reloading data)
+    if param_name == 'window_size':
+        if loader is None:
+            raise ValueError("loader must be provided for window_size sweep")
+        
+        print(f"Reloading data with window_size={param_value}...")
+        X_sweep, y_sweep, groups_sweep, class_names_sweep, group_names_sweep = load_and_extract_data(
+            loader=loader,
+            class_pair=tuple(config['dataset']['class_pair']),
+            date=config['dataset']['date'],
+            window_size=param_value,
+            skip_optim_offset=config['dataset']['skip_optim_offset'],
+            orbit=config['dataset'].get('orbit', 'DSC'),
+            polarisation=config['dataset'].get('polarisation', ['HH', 'HV']),
+            normalize=config['dataset'].get('normalize', False),
+            remove_nodata=config['dataset'].get('remove_nodata', True),
+            scale_type=config['dataset'].get('scale_type', 'amplitude'),
+            max_mask_value=config['dataset'].get('max_mask_value', 1),
+            max_mask_percentage=config['dataset'].get('max_mask_percentage', 0.0),
+            min_valid_percentage=config['dataset'].get('min_valid_percentage', 100.0),
+            verbose=False
+        )
+        print(f"Data reloaded: {len(X_sweep)} samples")
+        sweep_params = None  # No need to pass window_size to split
+    else:
+        # For other parameters, use preloaded data
+        X_sweep, y_sweep, groups_sweep = X, y, groups
+        class_names_sweep, group_names_sweep = class_names, group_names
+        sweep_params = {param_name: param_value}
     
     # Run across all seeds in parallel
     n_seeds = config['training']['n_seeds']
@@ -359,11 +389,11 @@ def run_single_sweep(
         delayed(train_single_seed)(
             seed=seed,
             config=config,
-            X=X,
-            y=y,
-            groups=groups,
-            class_names=class_names,
-            group_names=group_names,
+            X=X_sweep,
+            y=y_sweep,
+            groups=groups_sweep,
+            class_names=class_names_sweep,
+            group_names=group_names_sweep,
             output_dir=sweep_dir / f"seed_{seed:02d}",
             sweep_params=sweep_params
         )
@@ -520,7 +550,7 @@ def main(config_path: str, n_jobs: int = -1):
         for param_value in param_values:
             run_single_sweep(
                 config, X, y, groups, class_names, group_names, base_output_dir,
-                param_name, param_value, n_jobs=n_jobs
+                param_name, param_value, n_jobs=n_jobs, loader=loader
             )
     
     else:
@@ -546,6 +576,23 @@ def main(config_path: str, n_jobs: int = -1):
     print(f"\n{'='*80}")
     print(f"Results saved to: {base_output_dir}")
     print(f"{'='*80}\n")
+    
+    # Run Choquet aggregation if configured
+    if 'choquet' in config and config['choquet'] is not None:
+        print(f"\n{'#'*80}")
+        print("# RUNNING CHOQUET AGGREGATION")
+        print(f"{'#'*80}\n")
+        
+        try:
+            from .train_aggregate import main as train_aggregate_main
+            train_aggregate_main(config_path=config_path, results_dir=str(base_output_dir), n_jobs=n_jobs)
+            print(f"\n✅ Choquet aggregation completed successfully")
+        except Exception as e:
+            print(f"\n❌ ERROR in Choquet aggregation: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print("\nℹ️  Skipping Choquet aggregation (not configured in YAML)")
 
 
 if __name__ == "__main__":

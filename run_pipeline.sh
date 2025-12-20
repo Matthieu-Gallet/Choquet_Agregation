@@ -1,12 +1,34 @@
 #!/bin/bash
-# Quick start script for Choquet Aggregation pipeline
+# Pipeline script for Choquet Aggregation sweep experiments
 
 set -e  # Exit on error
 
+# Parse command line arguments
+DATA_PATH=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --data-path)
+            DATA_PATH="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--data-path /path/to/data.hdf5]"
+            exit 1
+            ;;
+    esac
+done
+
 echo "=========================================="
-echo "Choquet Aggregation - Quick Start"
+echo "Choquet Aggregation - Sweep Pipeline"
 echo "=========================================="
 echo ""
+
+if [ -n "$DATA_PATH" ]; then
+    echo "Using custom data path: $DATA_PATH"
+    echo ""
+fi
 
 # Check if virtual environment exists
 if [ ! -d ".venv" ]; then
@@ -37,42 +59,90 @@ fi
 
 echo ""
 echo "=========================================="
-echo "Ready to run pipeline!"
+echo "Ready to run sweep pipeline!"
 echo "=========================================="
 echo ""
 echo "Options:"
-echo "  1. Complete pipeline (ensemble + aggregation)"
-echo "  2. Ensemble training only"
-echo "  3. Aggregation only (use existing results)"
-echo "  4. Exit"
+echo "  1. Run samples sweep (max_samples_per_class)"
+echo "  2. Run window sweep (window_size)"
+echo "  3. Run all sweeps (samples + window)"
+echo "  4. Analyze existing results"
+echo "  5. Exit"
 echo ""
 
-read -p "Choose option (1-4): " choice
+read -p "Choose option (1-5): " choice
+
+# Default parameters
+N_JOBS=10
+WINDOW_SIZE=7
+MAX_SAMPLES=46
 
 case $choice in
     1)
         echo ""
-        echo "Running complete pipeline..."
-        python main.py --config config/config.yaml --n_jobs -1
+        echo "Running samples sweep..."
+        if [ -n "$DATA_PATH" ]; then
+            python src/main_sweep.py --mode samples --n_jobs $N_JOBS --data-path "$DATA_PATH"
+        else
+            python src/main_sweep.py --mode samples --n_jobs $N_JOBS
+        fi
+        
+        echo ""
+        echo "Analyzing results..."
+        python src/evaluation/analyze_sweeps.py \
+            --results_dir src/results \
+            --figures_dir src/figures \
+            --max_samples $MAX_SAMPLES
         ;;
     2)
         echo ""
-        echo "Running ensemble training..."
-        python -m learning.train_ensemble --config config/config.yaml --n_jobs 2
+        echo "Running window sweep..."
+        if [ -n "$DATA_PATH" ]; then
+            python src/main_sweep.py --mode window --n_jobs $N_JOBS --data-path "$DATA_PATH"
+        else
+            python src/main_sweep.py --mode window --n_jobs $N_JOBS
+        fi
+        
+        echo ""
+        echo "Analyzing results..."
+        python src/evaluation/analyze_sweeps.py \
+            --results_dir src/results \
+            --figures_dir src/figures \
+            --window_size $WINDOW_SIZE
         ;;
     3)
-        read -p "Enter results directory (or press Enter for auto-detect): " results_dir
-        if [ -z "$results_dir" ]; then
-            echo ""
-            echo "Running aggregation (auto-detect results)..."
-            python -m learning.train_aggregate --config config/config.yaml --n_jobs -1
+        echo ""
+        echo "Running all sweeps..."
+        if [ -n "$DATA_PATH" ]; then
+            python src/main_sweep.py --mode all --n_jobs $N_JOBS --data-path "$DATA_PATH"
         else
-            echo ""
-            echo "Running aggregation on: $results_dir"
-            python -m learning.train_aggregate --config config/config.yaml --results_dir "$results_dir" --n_jobs -1
+            python src/main_sweep.py --mode all --n_jobs $N_JOBS
         fi
+        
+        echo ""
+        echo "Analyzing results..."
+        python src/evaluation/analyze_sweeps.py \
+            --results_dir src/results \
+            --figures_dir src/figures \
+            --window_size $WINDOW_SIZE \
+            --max_samples $MAX_SAMPLES
         ;;
     4)
+        echo ""
+        read -p "Enter window_size for tables (default: $WINDOW_SIZE): " ws
+        read -p "Enter max_samples for tables (default: $MAX_SAMPLES): " ms
+        
+        WS=${ws:-$WINDOW_SIZE}
+        MS=${ms:-$MAX_SAMPLES}
+        
+        echo "Analyzing results..."
+        python src/evaluation/analyze_sweeps.py \
+            --results_dir src/results \
+            --figures_dir src/figures \
+            --window_size $WS \
+            --max_samples $MS
+        ;;
+    5)
         echo "Exiting..."
         exit 0
         ;;
@@ -87,12 +157,6 @@ echo "=========================================="
 echo "Pipeline completed!"
 echo "=========================================="
 echo ""
-echo "Results are in: ../results/"
-echo ""
-echo "To visualize results:"
-echo "  cd src"
-echo "  python -m evaluation.plot_results \\"
-echo "    --csv ../results/{hash}/choquet_aggregation_results.csv \\"
-echo "    --output_dir ../figures/ \\"
-echo "    --metric test_f1"
+echo "Results are in: src/results/"
+echo "Figures are in: src/figures/"
 echo ""
