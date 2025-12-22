@@ -124,10 +124,15 @@ def run_experiment(config_path: str, n_jobs: int = 1, run_aggregation: bool = Tr
             return False
         
         print(f"\n Aggregation completed successfully for {config_path}")
-        # Clean up temporary config if it was created
+    
+    # Clean up temporary config if it was created
     if data_path and 'temp_' in config_path:
-        Path(config_path).unlink(missing_ok=True)
-        return True
+        try:
+            Path(config_path).unlink(missing_ok=True)
+        except Exception as e:
+            pass  # Ignore errors if file already deleted
+    
+    return True
 
 
 def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = True, data_path: str = None, verbose: bool = False):

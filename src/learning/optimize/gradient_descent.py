@@ -35,7 +35,7 @@ def update_variable(stpa, stpy, theta, grad_a, grad_y):
     return alpha, we
 
 
-def GD_minimize(x_tr, ytr, theta, m, choice, methode="Weight", objective_func=None, **kwargs):
+def GD_minimize(x_tr, ytr, theta, m, choice, methode="Weight", objective_func=None, verbose=False, **kwargs):
     try:
         niter = kwargs["niter"]
     except:
@@ -54,7 +54,8 @@ def GD_minimize(x_tr, ytr, theta, m, choice, methode="Weight", objective_func=No
         display = True
 
     co = [1e15]
-    pbar = tqdm(total=niter, disable=not (display), leave=False)
+    if verbose:
+        pbar = tqdm(total=niter, disable=not (display), leave=False)
     for i in range(niter):
         cost, grad, ye = objective_func(theta, x_tr, ytr, m, choice, methode)
         grad_a, grad_y = gradient_update(grad)
@@ -67,9 +68,11 @@ def GD_minimize(x_tr, ytr, theta, m, choice, methode="Weight", objective_func=No
 
         yest = np.where(ye > 0.5, 1, 0)
         train_acc = 100 * accuracy_score(ytr, yest)
-        pbar.set_description(f"cost : {cost:.2f} - accuracy (train) : {train_acc:.2f} ")
-        pbar.update(1)
-    pbar.close()
+        if verbose:
+            pbar.set_description(f"cost : {cost:.2f} - accuracy (train) : {train_acc:.2f} ")
+            pbar.update(1)
+    if verbose:
+        pbar.close()
     theta = np.concatenate([we, [alpha]])
     out = {
         "cost": co,

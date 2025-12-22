@@ -8,6 +8,21 @@ and generates:
 2. LaTeX tables comparing methods at specific parameter values
 """
 
+import matplotlib
+# Utiliser pgf seulement si LaTeX est disponible
+try:
+    import subprocess
+    result = subprocess.run(['pdflatex', '--version'], capture_output=True, timeout=5)
+    if result.returncode == 0:
+        matplotlib.use('pgf')
+        LATEX_AVAILABLE = True
+    else:
+        matplotlib.use('Agg')
+        LATEX_AVAILABLE = False
+except:
+    matplotlib.use('Agg')
+    LATEX_AVAILABLE = False
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -17,32 +32,60 @@ from typing import Dict, List, Tuple, Optional
 import argparse
 
 # Configure matplotlib
-plt.rcParams.update({
-    "font.family": "serif",
-    "font.size": 11,
-    "axes.labelsize": 12,
-    "axes.titlesize": 14,
-    "xtick.labelsize": 10,
-    "ytick.labelsize": 10,
-    "legend.fontsize": 9,
-    "figure.titlesize": 16,
-    "axes.grid": True,
-    "grid.alpha": 0.3,
-    "axes.axisbelow": True,
-    "savefig.dpi": 300,
-    "savefig.bbox": "tight",
-})
+if LATEX_AVAILABLE:
+    plt.rcParams.update({
+        "font.family": "serif",
+        "text.usetex": True,
+        "pgf.texsystem": "pdflatex",
+        "pgf.preamble": "\n".join([
+            r"\usepackage[utf8x]{inputenc}",
+            r"\usepackage[T1]{fontenc}",
+            r"\usepackage{cmbright}",
+        ]),
+        "font.size": 11,
+        "axes.labelsize": 12,
+        "axes.titlesize": 14,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 9,
+        "figure.titlesize": 16,
+        "axes.grid": True,
+        "grid.alpha": 0.3,
+        "axes.axisbelow": True,
+        "savefig.dpi": 300,
+        "savefig.bbox": "tight",
+    })
+else:
+    plt.rcParams.update({
+        "font.family": "serif",
+        "font.size": 11,
+        "axes.labelsize": 12,
+        "axes.titlesize": 14,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "legend.fontsize": 9,
+        "figure.titlesize": 16,
+        "axes.grid": True,
+        "grid.alpha": 0.3,
+        "axes.axisbelow": True,
+        "savefig.dpi": 300,
+        "savefig.bbox": "tight",
+    })
 
 
-# Color scheme
+
+# Color scheme - Generate colors from colormaps
+colors0 = plt.cm.YlGnBu(np.linspace(0.5, 1, 3))  # For Choquet_Weight variants
+colors1 = plt.cm.YlOrBr(np.linspace(0.5, 1, 3))  # For Choquet_Power variants
+
 COLORS = {
-    'Choquet_Power': '#ff7f0e',           # Orange
-    'Choquet_Power_TN3': '#ff9e4a',     # Light orange
-    'Choquet_Power_TN6': '#ffb366',    # Lighter orange
-    'Choquet_Weight': '#1f77b4',          # Blue
-    'Choquet_Weight_TN3': '#5499c7',    # Light blue
-    'Choquet_Weight_TN6': '#85b8d9',   # Lighter blue
-    'LogisticRegression': '#000000',      # Black
+    'Choquet_Power': colors1[0],           # YlOrBr - darkest
+    'Choquet_Power_TN3': colors1[1],       # YlOrBr - medium
+    'Choquet_Power_TN6': colors1[2],       # YlOrBr - lightest
+    'Choquet_Weight': colors0[0],          # YlGnBu - darkest
+    'Choquet_Weight_TN3': colors0[1],      # YlGnBu - medium
+    'Choquet_Weight_TN6': colors0[2],      # YlGnBu - lightest
+    'LogisticRegression': '#000000',       # Black
 }
 
 
@@ -195,9 +238,31 @@ def create_sweep_boxplot(
     ax.set_ylabel('F1 Score', fontsize=12)
     
     # Create legend below plot with all items in one row
+    # Map method names to short names
+    if LATEX_AVAILABLE:
+        method_name_map = {
+            'Choquet_Weight': 'ChqW',
+            'Choquet_Weight_TN3': r'ChqW $T^3$',
+            'Choquet_Weight_TN6': r'ChqW $T^6$',
+            'Choquet_Power': 'ChqP',
+            'Choquet_Power_TN3': r'ChqP $T^3$',
+            'Choquet_Power_TN6': r'ChqP $T^6$',
+            'LogisticRegression': 'LR'
+        }
+    else:
+        method_name_map = {
+            'Choquet_Weight': 'ChqW',
+            'Choquet_Weight_TN3': 'ChqW T³',
+            'Choquet_Weight_TN6': 'ChqW T⁶',
+            'Choquet_Power': 'ChqP',
+            'Choquet_Power_TN3': 'ChqP T³',
+            'Choquet_Power_TN6': 'ChqP T⁶',
+            'LogisticRegression': 'LR'
+        }
+    
     legend_elements = [
         plt.Line2D([0], [0], color=COLORS.get(m, '#808080'), linewidth=8, 
-                   label=m.replace('_', ' '))
+                   label=method_name_map.get(m, m))
         for m in methods
     ]
     ax.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, -0.12), 

@@ -78,7 +78,7 @@ echo ""
 read -p "Choose option (1-5): " choice
 
 # Default parameters
-N_JOBS=10
+N_JOBS=5
 WINDOW_SIZE=7
 MAX_SAMPLES=46
 

@@ -6,6 +6,13 @@ Test script to verify imports and module structure.
 import sys
 from pathlib import Path
 
+# Add parent directory to path if we're running from src/
+current_dir = Path(__file__).parent
+if current_dir.name == 'src':
+    project_root = current_dir.parent
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+
 def test_imports():
     """Test that all modules can be imported correctly."""
     print("Testing module imports...")
@@ -14,7 +21,7 @@ def test_imports():
     
     # Test dataset imports
     try:
-        from dataset import (
+        from src.dataset import (
             MLDatasetLoader,
             load_and_extract_data,
             prepare_train_test_split
@@ -27,7 +34,7 @@ def test_imports():
     
     # Test learning imports
     try:
-        from learning import (
+        from src.learning import (
             ChoquetClassifier,
             ChoquetTnormClassifier,
             train_ensemble_main,
@@ -41,7 +48,7 @@ def test_imports():
     
     # Test fuzzy_measure imports
     try:
-        from fuzzy_measure import (
+        from src.fuzzy_measure import (
             fuzzy_power,
             fuzzy_weight,
             fuzzy_power_tnorm,
@@ -55,7 +62,7 @@ def test_imports():
     
     # Test evaluation imports
     try:
-        from evaluation import (
+        from src.evaluation import (
             aggregate_multiple_results,
             compute_statistics
         )
@@ -67,7 +74,7 @@ def test_imports():
     
     # Test optimize imports
     try:
-        from learning.optimize import GD_minimize, objective, objective_tnorm
+        from src.learning.optimize import GD_minimize, objective, objective_tnorm
         tests.append(("learning.optimize", True, None))
         print("✓ learning.optimize module imports OK")
     except Exception as e:

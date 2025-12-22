@@ -170,8 +170,14 @@ def split_train_test_groupkfold(
     tuple
         (X_train, X_test, y_train, y_test, groups_train, groups_test)
     """
-    # Shuffle data with seed before splitting
-    np.random.seed(random_state)
+    # Use seed to determine both shuffle and fold selection
+    # For consecutive seeds (0,1,2,3,4 with n_splits=5), they share the same shuffle
+    # but iterate through different folds
+    base_seed = random_state // n_splits  # Determines the shuffle
+    fold_idx = random_state % n_splits    # Determines which fold to use
+    
+    # Shuffle data with base_seed
+    np.random.seed(base_seed)
     indices = np.arange(len(X))
     np.random.shuffle(indices)
     
@@ -179,17 +185,15 @@ def split_train_test_groupkfold(
     y = y[indices]
     groups = groups[indices]
     
-    # Create StratifiedGroupKFold splitter with shuffle
-    gkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+    # Create StratifiedGroupKFold splitter with shuffle using base_seed
+    gkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=base_seed)
     
-    # Generate all folds and select one randomly
+    # Generate all folds and select the one corresponding to fold_idx
     folds = list(gkf.split(X, y, groups))
-    np.random.seed(random_state + 1000)  # Use a derived seed for fold selection
-    fold_idx = np.random.randint(0, n_splits)
     train_idx, test_idx = folds[fold_idx]
     
     if verbose:
-        print(f"  [SPLIT] Selected fold {fold_idx} randomly from {n_splits} splits")
+        print(f"  [SPLIT] Selected fold {fold_idx} from {n_splits} splits (base_seed={base_seed})")
     
     X_train = X[train_idx]
     X_test = X[test_idx]

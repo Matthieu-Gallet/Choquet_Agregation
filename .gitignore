@@ -13,3 +13,4 @@ __pycache__/
 .ipynb_checkpoints/
 src/results/*
 src/doc/*
+src/figures.old/*

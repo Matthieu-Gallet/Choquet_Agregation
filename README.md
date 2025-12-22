@@ -267,30 +267,14 @@ The framework implements several Choquet integral variants:
 ### Classical Methods
 
 1. **Choquet_Power**: Power-based fuzzy measure
-   - Emphasizes majority agreement
-   - Parameters learned via L-BFGS-B
-
 2. **Choquet_Weight**: Weight-based fuzzy measure
-   - Linear combination with interactions
-   - Parameters learned via L-BFGS-B
 
 ### T-norm Methods
-
-3. **Choquet_Power_TN3**: Power with Hamacher T-norm (c=3)
-   - Non-linear interactions between sources
-   - Gradient descent optimization
-
-4. **Choquet_Power_TN6**: Power with Hamacher T-norm (c=6)
-   - Stronger interactions
-   - Gradient descent optimization
-
-5. **Choquet_Weight_TN3**: Weight with Dubois-Prade T-norm (c=3)
-   - Weighted interactions
-   - Gradient descent optimization
-
-6. **Choquet_Weight_TN6**: Weight with Dubois-Prade T-norm (c=6)
-   - Enhanced weighted interactions
-   - Gradient descent optimization
+The number indicates the T-norm type used (cf. Associative Functions: Triangular Norms and Copulas by Alsina et al. 2006):
+3. **Choquet_Power_TN3**: Power with T-norm (3)
+4. **Choquet_Power_TN6**: Power with T-norm (6)
+5. **Choquet_Weight_TN3**: Weight with T-norm (3)
+6. **Choquet_Weight_TN6**: Weight with T-norm (6)
 
 ### Baseline
 
@@ -459,18 +443,6 @@ cd src
 python test_imports.py
 ```
 
-### Memory Issues
-
-Reduce parallelization or window size:
-```bash
-# In config YAML
-window_size: 7  # Instead of 11
-n_splits: 3     # Instead of 4
-```
-
-### CUDA/GPU Warnings
-
-This project uses CPU-only scikit-learn. GPU warnings can be ignored or suppressed.
 
 ## Citation
 
@@ -500,8 +472,3 @@ Contributions are welcome. Please fork the repository, create a feature branch, 
 
 For questions or issues, please open an issue on the repository or contact the authors via the CPAZMaL dataset page.
 
-## Acknowledgments
-
-- CPAZMaL dataset provided by Hugging Face
-- Choquet integral implementations based on fuzzy measure theory
-- SAR imagery from PAZ and TerraSAR-X satellites

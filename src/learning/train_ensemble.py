@@ -19,8 +19,8 @@ import sys
 
 warnings.filterwarnings('ignore')
 
-from ..dataset.dataloader import load_and_extract_data, prepare_train_test_split
-from ..dataset.load_dataset import MLDatasetLoader
+from src.dataset.dataloader import load_and_extract_data, prepare_train_test_split
+from src.dataset.load_dataset import MLDatasetLoader
 
 # Sklearn imports
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
@@ -320,7 +320,8 @@ def run_single_sweep(
     param_value: Any,
     n_jobs: int = -1,
     loader: 'MLDatasetLoader' = None,
-    quiet: bool = False
+    quiet: bool = False,
+    seed_pbar: tqdm = None
 ) -> None:
     """
     Run training for a single sweep parameter value across all seeds.
@@ -381,13 +382,8 @@ def run_single_sweep(
             max_mask_value=config['dataset'].get('max_mask_value', 1),
             max_mask_percentage=config['dataset'].get('max_mask_percentage', 0.0),
             min_valid_percentage=config['dataset'].get('min_valid_percentage', 100.0),
-            verbose=not quiet
+            verbose=False  # Disable verbose to avoid extra tqdm bars
         )
-        if not quiet:
-            print(f"Data reloaded: {len(X_sweep)} samples")
-        else:
-            print(f"Data reloaded: {len(X_sweep)} samples")
-            print("Running calculations...\n")
         sweep_params = None  # No need to pass window_size to split
     else:
         # For other parameters, use preloaded data
@@ -398,8 +394,14 @@ def run_single_sweep(
     # Run across all seeds in parallel
     n_seeds = config['training']['n_seeds']
     
-    Parallel(n_jobs=n_jobs, backend='threading')(
-        delayed(train_single_seed)(
+    # Reset seed progress bar if provided
+    if seed_pbar is not None:
+        seed_pbar.n = 0
+        seed_pbar.last_print_n = 0
+        seed_pbar.refresh()
+    
+    def train_with_update(seed):
+        result = train_single_seed(
             seed=seed,
             config=config,
             X=X_sweep,
@@ -411,7 +413,13 @@ def run_single_sweep(
             sweep_params=sweep_params,
             quiet=quiet
         )
-        for seed in tqdm(range(n_seeds), desc=f"Seeds ({param_name}={param_value})", disable=quiet)
+        if seed_pbar is not None:
+            seed_pbar.update(1)
+        return result
+    
+    Parallel(n_jobs=n_jobs, backend='threading')(
+        delayed(train_with_update)(seed)
+        for seed in range(n_seeds)
     )
 
 
@@ -499,7 +507,7 @@ def run_double_sweep(
                 for seed in tqdm(
                     range(n_seeds),
                     desc=f"Seeds ({param1_name}={param1_value}, {param2_name}={param2_value})",
-                    disable=quiet
+                    disable=not quiet
                 )
             )
 
@@ -552,15 +560,11 @@ def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
         max_mask_value=config['dataset'].get('max_mask_value', 1),
         max_mask_percentage=config['dataset'].get('max_mask_percentage', 0.0),
         min_valid_percentage=config['dataset'].get('min_valid_percentage', 100.0),
-        verbose=not quiet
+        verbose=False  # Always disable verbose to avoid extra tqdm bars
     )
     
-    if not quiet:
-        print(f"Data extracted: {len(X)} samples")
-        print("\nRunning calculations...\n")
-              
-    else:
-        print(f"Data extracted: {len(X)} samples")
+    print(f"Data extracted: {len(X)} samples")
+    if quiet:
         print("Running calculations...\n")
     
     # Check for sweep configurations
@@ -575,13 +579,36 @@ def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
         # Run single parameter sweep
         param_name = config['sweep']['param_name']
         param_values = config['sweep']['values']
+        n_seeds = config['training']['n_seeds']
+        
+        # Create two fixed progress bars in quiet mode
+        if quiet:
+            # Bar 1: Sweep parameter progress (position 0)
+            param_pbar = tqdm(total=len(param_values), desc=f"{param_name}", position=0, leave=True)
+            # Bar 2: Seeds progress (position 1, will be reset for each parameter value)
+            seed_pbar = tqdm(total=n_seeds, desc="Seeds", position=1, leave=False)
+        else:
+            param_pbar = None
+            seed_pbar = None
         
         for param_value in param_values:
+            if param_pbar is not None:
+                param_pbar.set_description(f"{param_name}={param_value}")
+            
             run_single_sweep(
                 config, X, y, groups, class_names, group_names, base_output_dir,
-                param_name, param_value, n_jobs=n_jobs, loader=loader, quiet=quiet
+                param_name, param_value, n_jobs=n_jobs, loader=loader, quiet=quiet, seed_pbar=seed_pbar
             )
-    
+            
+            if param_pbar is not None:
+                param_pbar.update(1)
+        
+        # Close progress bars
+        if param_pbar is not None:
+            param_pbar.close()
+        if seed_pbar is not None:
+            seed_pbar.close()
+
     else:
         # No sweep - run for all seeds with default parameters
         print("No sweep detected. Running with default parameters...\n")
@@ -600,7 +627,7 @@ def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
                 sweep_params=None,
                 quiet=quiet
             )
-            for seed in tqdm(range(n_seeds), desc="Seeds", disable=quiet)
+            for seed in tqdm(range(n_seeds), desc="Seeds", disable=not quiet)
         )
     
     print(f"\n{'='*80}")
@@ -609,20 +636,16 @@ def main(config_path: str, n_jobs: int = -1, quiet: bool = False):
     
     # Run Choquet aggregation if configured
     if 'choquet' in config and config['choquet'] is not None:
-        print(f"\n{'#'*80}")
-        print("# RUNNING CHOQUET AGGREGATION")
-        print(f"{'#'*80}\n")
-        
         try:
             from .train_aggregate import main as train_aggregate_main
             train_aggregate_main(config_path=config_path, results_dir=str(base_output_dir), n_jobs=n_jobs, quiet=quiet)
-            print(f"\n✅ Choquet aggregation completed successfully")
+            print(f"\n Choquet aggregation completed successfully")
         except Exception as e:
-            print(f"\n❌ ERROR in Choquet aggregation: {e}")
+            print(f"\n ERROR in Choquet aggregation: {e}")
             import traceback
             traceback.print_exc()
     else:
-        print("\nℹ️  Skipping Choquet aggregation (not configured in YAML)")
+        print("\n Skipping Choquet aggregation (not configured in YAML)")
 
 
 if __name__ == "__main__":

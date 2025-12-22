@@ -4,15 +4,15 @@ dataset:
   data_path: "dataset/CPAZMaL.hdf5"
   class_pair: ["ABL", "ACC"]
   date: "20200804"
-  window_size: 7  # Will be overridden by sweep
+  window_size: 11  # Will be overridden by sweep
   skip_optim_offset: true
-  n_splits: 4
+  n_splits: 5
   max_samples_per_class: 1
   orbit: "DSC"
   polarisation: ["HH", "HV"]
-  scale_type: "amplitude"
+  scale_type: "log10"
   max_mask_value: 2
-  max_mask_percentage: 40.0
+  max_mask_percentage: 25.0
 
 noise:
   label_noise_percentage: 0.0
@@ -70,12 +70,12 @@ models:
     type: "MLPClassifier"
     params:
       hidden_layer_sizes: [100, 50]
-      max_iter: 500
+      max_iter: 1000
 
 # Sweep on window_size
 sweep:
   param_name: "window_size"
-  values: [2,  4,  5,  7, 10, 13, 19, 25, 35, 48]
+  values: [2,  4,  5,  7, 10, 13, 19, 25, 35]
 
 choquet:
   optimizer_weight: "L-BFGS-B"

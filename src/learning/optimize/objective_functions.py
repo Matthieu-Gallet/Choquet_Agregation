@@ -1,8 +1,8 @@
 
 
 import numpy as np
-from ...fuzzy_measure.classical import fuzzy_power, power_prime, fuzzy_weight, weight_prime
-from ...fuzzy_measure.tnorm import fuzzy_power_tnorm, gradient_power_tnorm, fuzzy_weight_tnorm, gradient_weight_tnorm
+from src.fuzzy_measure.classical import fuzzy_power, power_prime, fuzzy_weight, weight_prime
+from src.fuzzy_measure.tnorm import fuzzy_power_tnorm, gradient_power_tnorm, fuzzy_weight_tnorm, gradient_weight_tnorm
 
 
 def objective(theta, x, y, m, methode="Power"):

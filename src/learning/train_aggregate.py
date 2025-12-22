@@ -16,7 +16,7 @@ from tqdm import tqdm
 from sklearn.utils.parallel import Parallel, delayed
 
 
-from .choquet_learnable import ChoquetClassifier, ChoquetTnormClassifier
+from src.learning.choquet_learnable import ChoquetClassifier, ChoquetTnormClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
@@ -362,21 +362,18 @@ def process_results_directory(
     
     print(f"Found {len(exp_dirs)} experiment directories")
     
-    # Process experiments in parallel
-    if n_jobs == 1 or verbose:
-        # Sequential processing for better progress display
-        results_list = []
-        for exp_dir in tqdm(exp_dirs, desc="Processing experiments"):
-            result = train_and_evaluate_single_experiment(exp_dir, config, verbose=False)
-            if result is not None:
-                results_list.append(result)
-    else:
-        # Parallel processing
-        results_list = Parallel(n_jobs=n_jobs, backend='threading')(
-            delayed(train_and_evaluate_single_experiment)(exp_dir, config, verbose=False)
-            for exp_dir in tqdm(exp_dirs, desc="Processing experiments")
-        )
-        results_list = [r for r in results_list if r is not None]
+    if not verbose:
+        print("Running calculations...\n")
+    
+    # Process experiments in parallel with progress bar
+    # Create tqdm iterator outside to ensure it displays properly
+    exp_dirs_iter = tqdm(exp_dirs, desc="Aggregation", disable=verbose) if not verbose else exp_dirs
+    
+    results_list = Parallel(n_jobs=n_jobs, backend='threading')(
+        delayed(train_and_evaluate_single_experiment)(exp_dir, config, verbose=verbose)
+        for exp_dir in exp_dirs_iter
+    )
+    results_list = [r for r in results_list if r is not None]
     
     # Convert to DataFrame
     df = pd.DataFrame(results_list)
@@ -484,34 +481,36 @@ def main(config_path: str, results_dir: str = None, n_jobs: int = -1, quiet: boo
                 overall_auc = ensemble_df['test_auc'].mean()
                 print(f"\nOverall Mean AUC (all classifiers): {overall_auc:.4f}")
     
-    # Print summary statistics
-    print("\n" + "="*80)
-    print("CHOQUET AGGREGATION SUMMARY - F1 SCORES")
-    print("="*80)
-    
-    # Identify F1 metric columns
-    f1_cols = [col for col in df.columns if 'test_f1' in col]
-    
-    if f1_cols:
-        print("\nTest F1 Metrics Summary:")
-        summary_stats_f1 = df[f1_cols].agg(['mean', 'std', lambda x: x.quantile(0.25), lambda x: x.quantile(0.5), lambda x: x.quantile(0.75)])
-        summary_stats_f1.index = ['mean', 'std', '25%', '50%', '75%']
-        print(summary_stats_f1.round(4))
-    
-    print("\n" + "="*80)
-    print("CHOQUET AGGREGATION SUMMARY - AUC-ROC")
-    print("="*80)
-    
-    # Identify AUC metric columns
-    auc_cols = [col for col in df.columns if 'test_auc' in col]
-    
-    if auc_cols:
-        print("\nTest AUC-ROC Metrics Summary:")
-        summary_stats_auc = df[auc_cols].agg(['mean', 'std', lambda x: x.quantile(0.25), lambda x: x.quantile(0.5), lambda x: x.quantile(0.75)])
-        summary_stats_auc.index = ['mean', 'std', '25%', '50%', '75%']
-        print(summary_stats_auc.round(4))
-    
-    print("\n" + "="*80)
+
+    if not quiet:
+        # Print summary statistics
+        print("\n" + "="*80)
+        print("CHOQUET AGGREGATION SUMMARY - F1 SCORES")
+        print("="*80)
+        
+        # Identify F1 metric columns
+        f1_cols = [col for col in df.columns if 'test_f1' in col]
+        
+        if f1_cols:
+            print("\nTest F1 Metrics Summary:")
+            summary_stats_f1 = df[f1_cols].agg(['mean', 'std', lambda x: x.quantile(0.25), lambda x: x.quantile(0.5), lambda x: x.quantile(0.75)])
+            summary_stats_f1.index = ['mean', 'std', '25%', '50%', '75%']
+            print(summary_stats_f1.round(4))
+        
+        print("\n" + "="*80)
+        print("CHOQUET AGGREGATION SUMMARY - AUC-ROC")
+        print("="*80)
+        
+        # Identify AUC metric columns
+        auc_cols = [col for col in df.columns if 'test_auc' in col]
+        
+        if auc_cols:
+            print("\nTest AUC-ROC Metrics Summary:")
+            summary_stats_auc = df[auc_cols].agg(['mean', 'std', lambda x: x.quantile(0.25), lambda x: x.quantile(0.5), lambda x: x.quantile(0.75)])
+            summary_stats_auc.index = ['mean', 'std', '25%', '50%', '75%']
+            print(summary_stats_auc.round(4))
+        
+        print("\n" + "="*80)
 
 
 if __name__ == "__main__":

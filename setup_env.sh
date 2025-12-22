@@ -58,10 +58,9 @@ echo ""
 
 # Test imports and install missing packages
 echo "Testing imports..."
-cd src
 
-# Run test_imports.py and capture output
-if python test_imports.py 2>&1 | tee /tmp/import_test.log; then
+# Run test_imports.py from project root (not from src/)
+if python src/test_imports.py 2>&1 | tee /tmp/import_test.log; then
     echo "[✓] All imports successful"
 else
     echo ""
@@ -96,17 +95,14 @@ else
         
         echo ""
         echo "Retesting imports..."
-        if python test_imports.py; then
+        if python src/test_imports.py; then
             echo "[✓] All imports now successful"
         else
             echo "[✗] Some imports still failing. Please check manually."
-            cd ..
             exit 1
         fi
     fi
 fi
-
-cd ..
 
 echo ""
 echo "=========================================="
