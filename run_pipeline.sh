@@ -69,8 +69,8 @@ echo "=========================================="
 echo ""
 echo "Options:"
 echo "  1. Run samples sweep (max_samples_per_class)"
-echo "  2. Run window sweep (window_size)"
-echo "  3. Run all sweeps (samples + window)"
+echo "  2. Run noise sweep (data_noise_std)"
+echo "  3. Run all sweeps (samples + noise)"
 echo "  4. Analyze existing results"
 echo "  5. Exit"
 echo ""
@@ -79,8 +79,7 @@ read -p "Choose option (1-5): " choice
 
 # Default parameters
 N_JOBS=5
-WINDOW_SIZE=7
-MAX_SAMPLES=46
+MAX_SAMPLES=2500
 
 case $choice in
     1)
@@ -101,11 +100,11 @@ case $choice in
         ;;
     2)
         echo ""
-        echo "Running window sweep..."
+        echo "Running noise sweep..."
         if [ -n "$DATA_PATH" ]; then
-            python src/main_sweep.py --mode window --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
+            python src/main_sweep.py --mode noise --n_jobs $N_JOBS --data-path "$DATA_PATH" $VERBOSE
         else
-            python src/main_sweep.py --mode window --n_jobs $N_JOBS $VERBOSE
+            python src/main_sweep.py --mode noise --n_jobs $N_JOBS $VERBOSE
         fi
         
         echo ""
@@ -113,7 +112,7 @@ case $choice in
         python src/evaluation/analyze_sweeps.py \
             --results_dir src/results \
             --figures_dir src/figures \
-            --window_size $WINDOW_SIZE
+            --data_noise 0.5
         ;;
     3)
         echo ""
@@ -124,28 +123,27 @@ case $choice in
             python src/main_sweep.py --mode all --n_jobs $N_JOBS $VERBOSE
         fi
         
-        echo ""
         echo "Analyzing results..."
         python src/evaluation/analyze_sweeps.py \
             --results_dir src/results \
             --figures_dir src/figures \
-            --window_size $WINDOW_SIZE \
-            --max_samples $MAX_SAMPLES
+            --max_samples $MAX_SAMPLES \
+            --data_noise 0.5
         ;;
     4)
         echo ""
-        read -p "Enter window_size for tables (default: $WINDOW_SIZE): " ws
         read -p "Enter max_samples for tables (default: $MAX_SAMPLES): " ms
+        read -p "Enter data_noise for tables (default: 0.05): " dn
         
-        WS=${ws:-$WINDOW_SIZE}
         MS=${ms:-$MAX_SAMPLES}
+        DN=${dn:-0.05}
         
         echo "Analyzing results..."
         python src/evaluation/analyze_sweeps.py \
             --results_dir src/results \
             --figures_dir src/figures \
-            --window_size $WS \
-            --max_samples $MS
+            --max_samples $MS \
+            --data_noise $DN
         ;;
     5)
         echo "Exiting..."

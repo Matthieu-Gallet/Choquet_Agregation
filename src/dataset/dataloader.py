@@ -33,13 +33,14 @@ def add_label_noise(y: np.ndarray, noise_percentage: float, seed: int = 42) -> n
     if noise_percentage <= 0:
         return y.copy()
     
-    np.random.seed(seed)
+    # Use RandomState for thread-safe reproducibility
+    rng = np.random.RandomState(seed)
     y_noisy = y.copy()
     n_samples = len(y)
     n_flip = int(n_samples * noise_percentage / 100.0)
     
     # Randomly select indices to flip
-    flip_indices = np.random.choice(n_samples, size=n_flip, replace=False)
+    flip_indices = rng.choice(n_samples, size=n_flip, replace=False)
     
     # Flip the labels (0 -> 1, 1 -> 0)
     y_noisy[flip_indices] = 1 - y_noisy[flip_indices]
@@ -49,28 +50,45 @@ def add_label_noise(y: np.ndarray, noise_percentage: float, seed: int = 42) -> n
 
 def add_data_noise(X: np.ndarray, noise_std: float, seed: int = 42) -> np.ndarray:
     """
-    Add Gaussian noise to the data.
+    Add multiplicative speckle noise to SAR data.
+    
+    Speckle is a multiplicative noise inherent to SAR imagery.
+    The noisy data is computed as: X_noisy = X * speckle_noise
+    where speckle_noise follows a Gamma distribution with mean=1 and variance=noise_std^2.
 
     Parameters
     ----------
     X : np.ndarray
         Original data array.
     noise_std : float
-        Standard deviation of the Gaussian noise to add.
+        Standard deviation of the multiplicative speckle noise.
+        Controls the intensity of the speckle effect.
     seed : int, default=42
         Random seed for reproducibility.
 
     Returns
     -------
     np.ndarray
-        Noisy data.
+        Noisy data with multiplicative speckle noise.
     """
     if noise_std <= 0:
         return X.copy()
     
-    np.random.seed(seed)
-    noise = np.random.normal(0, noise_std, X.shape)
-    X_noisy = X + noise
+    # Use RandomState for thread-safe reproducibility
+    rng = np.random.RandomState(seed)
+    
+    # Gamma distribution parameters for speckle noise
+    # We want: mean = 1, variance = noise_std^2
+    # For Gamma(shape, scale): mean = shape*scale, variance = shape*scale^2
+    # Setting mean = 1: shape*scale = 1 => scale = 1/shape
+    # Setting variance = noise_std^2: shape*scale^2 = noise_std^2
+    # => shape*(1/shape)^2 = noise_std^2 => 1/shape = noise_std^2 => shape = 1/noise_std^2
+    shape = 1.0 / (noise_std ** 2)
+    scale = noise_std ** 2
+    
+    # Generate multiplicative speckle noise
+    speckle_noise = rng.gamma(shape, scale, X.shape)
+    X_noisy = X * speckle_noise
     
     return X_noisy
 
@@ -109,7 +127,8 @@ def filter_max_samples_per_class(
     if max_samples_per_class is None:
         return X, y, groups
     
-    np.random.seed(seed)
+    # Use RandomState for thread-safe reproducibility
+    rng = np.random.RandomState(seed)
     unique_classes = np.unique(y)
     selected_indices = []
     
@@ -119,7 +138,7 @@ def filter_max_samples_per_class(
         
         if n_class > max_samples_per_class:
             # Randomly sample max_samples_per_class indices
-            sampled_indices = np.random.choice(
+            sampled_indices = rng.choice(
                 class_indices, 
                 size=max_samples_per_class, 
                 replace=False
@@ -176,10 +195,10 @@ def split_train_test_groupkfold(
     base_seed = random_state // n_splits  # Determines the shuffle
     fold_idx = random_state % n_splits    # Determines which fold to use
     
-    # Shuffle data with base_seed
-    np.random.seed(base_seed)
+    # Shuffle data with base_seed - use RandomState for thread safety
+    rng = np.random.RandomState(base_seed)
     indices = np.arange(len(X))
-    np.random.shuffle(indices)
+    rng.shuffle(indices)
     
     X = X[indices]
     y = y[indices]

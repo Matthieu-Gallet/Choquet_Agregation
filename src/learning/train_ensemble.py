@@ -8,6 +8,7 @@ and parallel execution across multiple seeds.
 """
 
 import numpy as np
+import random
 import yaml
 import hashlib
 from pathlib import Path
@@ -16,6 +17,7 @@ from sklearn.utils.parallel import Parallel, delayed
 from tqdm import tqdm
 import warnings
 import sys
+import os
 
 warnings.filterwarnings('ignore')
 
@@ -30,6 +32,30 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+
+
+def set_all_seeds(seed: int) -> None:
+    """
+    Set all random seeds for reproducibility.
+    
+    This function ensures complete reproducibility by fixing seeds for:
+    - Python's built-in random module
+    - NumPy's random number generator
+    - Python's hash seed (for dictionary ordering)
+    
+    Parameters
+    ----------
+    seed : int
+        The seed value to use for all random number generators.
+    """
+    # Python random module
+    random.seed(seed)
+    
+    # Numpy random
+    np.random.seed(seed)
+    
+    # Python hash seed (must be set before Python starts, but we set it anyway)
+    os.environ['PYTHONHASHSEED'] = str(seed)
 
 
 def get_config_hash(config: Dict) -> str:
@@ -241,6 +267,9 @@ def train_single_seed(
     quiet : bool
         If True, suppress verbose output.
     """
+    # Fix all random seeds for complete reproducibility
+    set_all_seeds(seed)
+    
     if not quiet:
         print(f"\n{'='*80}")
         print(f"SEED: {seed}")

@@ -1,25 +1,25 @@
-# Configuration for ROC vs PLA classification with window_size sweep
+# Configuration for ABL vs ACC classification with max_samples_per_class sweep
 
 dataset:
   data_path: "dataset/CPAZMaL.hdf5"
-  class_pair: ["ROC", "PLA"]
+  class_pair: ["ABL", "ACC"]
   date: "20200804"
-  window_size: 11  # Will be overridden by sweep
+  window_size: 5
   skip_optim_offset: true
   n_splits: 5
-  max_samples_per_class: 1
+  max_samples_per_class: 2500
   orbit: "DSC"
   polarisation: ["HH", "HV"]
-  scale_type: "log10"
+  scale_type: "amplitude"
   max_mask_value: 2
-  max_mask_percentage: 25.0
+  max_mask_percentage: 10.0
 
 noise:
   label_noise_percentage: 0.0
-  data_noise_std: 0.0
+  data_noise_std: 0.0  # Will be overridden by sweep
 
 training:
-  n_seeds: 10
+  n_seeds: 25
   save_scores: true
 
 models:
@@ -72,22 +72,24 @@ models:
       hidden_layer_sizes: [100, 50]
       max_iter: 1000
 
-# Sweep on window_size
+# Sweep on max_samples_per_class
 sweep:
-  param_name: "window_size"
-  values: [2,  4,  5,  7, 10, 13, 19, 25, 35]
+  param_name: "data_noise_std"
+  values: [0.0, 0.05, 0.5, 5]
+
 
 choquet:
-  optimizer_weight: "L-BFGS-B"
-  optimizer_power: "L-BFGS-B"
+  optimizer_weight: "Nelder-Mead"
+  optimizer_power: "Nelder-Mead"
   optimizer_tnorm: "GD"
   alpha: null
-  niter: 1000
-  stpa_weight: 0.005
-  stpy_weight: 0.005
-  stpa_power: 0.001
-  stpy_power: 0.001
+  niter: 100000
+  stpa_weight: 0.1
+  stpy_weight: 0.1
+  stpy_power: 0.5
+  stpa_power_6: 0.05
+  stpa_power_3: 0.5
   lr_penalty: null
-  lr_max_iter: 1000
+  lr_max_iter: 10000
   process_data: true
   jac: true

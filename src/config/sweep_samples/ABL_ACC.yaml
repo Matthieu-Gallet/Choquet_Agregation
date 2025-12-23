@@ -10,7 +10,7 @@ dataset:
   max_samples_per_class: 100  # Will be overridden by sweep
   orbit: "DSC"
   polarisation: ["HH", "HV"]
-  scale_type: "log10"
+  scale_type: "amplitude"
   max_mask_value: 2
   max_mask_percentage: 10.0
 
@@ -19,7 +19,7 @@ noise:
   data_noise_std: 0.0
 
 training:
-  n_seeds: 5
+  n_seeds: 25
   save_scores: true
 
 models:
@@ -75,20 +75,22 @@ models:
 # Sweep on max_samples_per_class
 sweep:
   param_name: "max_samples_per_class"
-  values: [100, 2000]
+  values: [5, 50, 500, 2500,5000]
   # [1, 2, 4, 10, 21, 46, 100, 215, 464, 1000, 1500]
 
+
 choquet:
-  optimizer_weight: "L-BFGS-B"
-  optimizer_power: "L-BFGS-B"
+  optimizer_weight: "Nelder-Mead"
+  optimizer_power: "Nelder-Mead"
   optimizer_tnorm: "GD"
   alpha: null
-  niter: 1000
-  stpa_weight: 0.005
-  stpy_weight: 0.005
-  stpa_power: 0.001
-  stpy_power: 0.001
+  niter: 100000
+  stpa_weight: 0.1
+  stpy_weight: 0.1
+  stpy_power: 0.5
+  stpa_power_6: 0.05
+  stpa_power_3: 0.5
   lr_penalty: null
-  lr_max_iter: 1000
+  lr_max_iter: 10000
   process_data: true
   jac: true

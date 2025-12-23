@@ -14,3 +14,5 @@ __pycache__/
 src/results/*
 src/doc/*
 src/figures.old/*
+figures/*
+src/config/back/*

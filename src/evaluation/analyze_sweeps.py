@@ -265,7 +265,7 @@ def create_sweep_boxplot(
                    label=method_name_map.get(m, m))
         for m in methods
     ]
-    ax.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, -0.12), 
+    ax.legend(handles=legend_elements, loc='upper center', bbox_to_anchor=(0.5, -0.2), 
               ncol=len(methods), framealpha=0.9, frameon=True)
     
     ax.grid(True, alpha=0.3, axis='y')
@@ -380,7 +380,8 @@ def analyze_results_directory(
     results_dir: Path,
     figures_base_dir: Path,
     window_size_value: Optional[int] = None,
-    max_samples_value: Optional[int] = None
+    max_samples_value: Optional[int] = None,
+    data_noise_value: Optional[float] = None
 ) -> None:
     """
     Analyze a single results directory and generate figures and tables.
@@ -395,6 +396,8 @@ def analyze_results_directory(
         Specific window_size for LaTeX table.
     max_samples_value : int, optional
         Specific max_samples_per_class for LaTeX table.
+    data_noise_value : float, optional
+        Specific data_noise_std for LaTeX table.
     """
     print(f"\n{'='*80}")
     print(f"Analyzing: {results_dir.name}")
@@ -421,17 +424,24 @@ def analyze_results_directory(
     # Check for sweep parameters
     has_window_sweep = 'window_size' in df.columns and df['window_size'].notna().any()
     has_samples_sweep = 'max_samples_per_class' in df.columns and df['max_samples_per_class'].notna().any()
+    has_noise_sweep = 'data_noise_std' in df.columns and df['data_noise_std'].notna().any()
     
+    width = 105 / (25.4)
+    width = 2 * width
+    height = (7.5/15) * width * 0.825
+    figsize = (width, height)
     # Create boxplots for sweeps
     if has_window_sweep:
         print("\nCreating window_size sweep plot...")
+
         try:
             create_sweep_boxplot(
                 df=df,
                 sweep_param='window_size',
                 metric='test_f1',
                 output_path=output_dir / 'sweep_window_size.pdf',
-                title=f'{class_pair[0]} vs {class_pair[1]} - Window Size Sweep'
+                title=f'{class_pair[0]} vs {class_pair[1]} - Window Size Sweep',
+                figsize=figsize
             )
         except Exception as e:
             print(f"ERROR creating window_size plot: {e}")
@@ -444,25 +454,25 @@ def analyze_results_directory(
                 sweep_param='max_samples_per_class',
                 metric='test_f1',
                 output_path=output_dir / 'sweep_max_samples.pdf',
-                title=f'{class_pair[0]} vs {class_pair[1]} - Max Samples Sweep'
+                title=f'{class_pair[0]} vs {class_pair[1]} - Max Samples Sweep',
+                figsize=figsize
             )
         except Exception as e:
             print(f"ERROR creating max_samples plot: {e}")
     
-    # Create LaTeX tables for specific values
-    if window_size_value is not None and has_window_sweep:
-        print(f"\nCreating LaTeX table for window_size={window_size_value}...")
+    if has_noise_sweep:
+        print("\nCreating data_noise_std sweep plot...")
         try:
-            create_latex_table(
+            create_sweep_boxplot(
                 df=df,
-                param_name='window_size',
-                param_value=window_size_value,
+                sweep_param='data_noise_std',
                 metric='test_f1',
-                output_path=output_dir / f'table_window_size_{window_size_value}.tex',
-                caption=f'Comparison of aggregation methods for {class_pair[0]} vs {class_pair[1]} with window size = {window_size_value}'
+                output_path=output_dir / 'sweep_data_noise.pdf',
+                title=f'{class_pair[0]} vs {class_pair[1]} - Data Noise Sweep',
+                figsize=figsize
             )
         except Exception as e:
-            print(f"ERROR creating window_size table: {e}")
+            print(f"ERROR creating data_noise plot: {e}")
     
     if max_samples_value is not None and has_samples_sweep:
         print(f"\nCreating LaTeX table for max_samples_per_class={max_samples_value}...")
@@ -477,6 +487,20 @@ def analyze_results_directory(
             )
         except Exception as e:
             print(f"ERROR creating max_samples table: {e}")
+    
+    if data_noise_value is not None and has_noise_sweep:
+        print(f"\nCreating LaTeX table for data_noise_std={data_noise_value}...")
+        try:
+            create_latex_table(
+                df=df,
+                param_name='data_noise_std',
+                param_value=data_noise_value,
+                metric='test_f1',
+                output_path=output_dir / f'table_data_noise_{data_noise_value}.tex',
+                caption=f'Comparison of aggregation methods for {class_pair[0]} vs {class_pair[1]} with data noise std = {data_noise_value}'
+            )
+        except Exception as e:
+            print(f"ERROR creating data_noise table: {e}")
     
     print(f"\nResults saved to: {output_dir}")
 
@@ -529,6 +553,13 @@ Examples:
         help='Specific max_samples_per_class value for LaTeX table generation'
     )
     
+    parser.add_argument(
+        '--data_noise',
+        type=float,
+        default=None,
+        help='Specific data_noise_std value for LaTeX table generation'
+    )
+    
     args = parser.parse_args()
     
     results_path = Path(args.results_dir)
@@ -545,7 +576,8 @@ Examples:
             results_dir=results_path,
             figures_base_dir=figures_path,
             window_size_value=args.window_size,
-            max_samples_value=args.max_samples
+            max_samples_value=args.max_samples,
+            data_noise_value=args.data_noise
         )
     else:
         # Parent directory - analyze all subdirectories with results
@@ -565,7 +597,8 @@ Examples:
                 results_dir=result_dir,
                 figures_base_dir=figures_path,
                 window_size_value=args.window_size,
-                max_samples_value=args.max_samples
+                max_samples_value=args.max_samples,
+                data_noise_value=args.data_noise
             )
     
     print(f"\n{'='*80}")

@@ -7,6 +7,7 @@ and compares them with logistic regression baseline.
 """
 
 import numpy as np
+import random
 import pandas as pd
 import yaml
 from pathlib import Path
@@ -14,6 +15,7 @@ from typing import Dict, Tuple
 import warnings
 from tqdm import tqdm
 from sklearn.utils.parallel import Parallel, delayed
+import os
 
 
 from src.learning.choquet_learnable import ChoquetClassifier, ChoquetTnormClassifier
@@ -21,6 +23,30 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
 warnings.filterwarnings('ignore')
+
+
+def set_all_seeds(seed: int) -> None:
+    """
+    Set all random seeds for reproducibility.
+    
+    This function ensures complete reproducibility by fixing seeds for:
+    - Python's built-in random module
+    - NumPy's random number generator
+    - Python's hash seed (for dictionary ordering)
+    
+    Parameters
+    ----------
+    seed : int
+        The seed value to use for all random number generators.
+    """
+    # Python random module
+    random.seed(seed)
+    
+    # Numpy random
+    np.random.seed(seed)
+    
+    # Python hash seed (must be set before Python starts, but we set it anyway)
+    os.environ['PYTHONHASHSEED'] = str(seed)
 
 
 def load_config(config_path: str) -> Dict:
@@ -141,13 +167,15 @@ def create_choquet_models(config: Dict, seed: int) -> Dict:
             methode='Weight',
             optimizer=choquet_config.get('optimizer_weight', 'L-BFGS-B'),
             process_data=choquet_config.get('process_data', True),
-            jac=choquet_config.get('jac', True)
+            jac=choquet_config.get('jac', True),
+            random_state=seed
         ),
         'Choquet_Power': ChoquetClassifier(
             methode='Power',
             optimizer=choquet_config.get('optimizer_power', 'L-BFGS-B'),
             process_data=choquet_config.get('process_data', True),
-            jac=choquet_config.get('jac', True)
+            jac=choquet_config.get('jac', True),
+            random_state=seed
         ),
         'Choquet_Weight_TN3': ChoquetTnormClassifier(
             methode='Weight',
@@ -158,7 +186,8 @@ def create_choquet_models(config: Dict, seed: int) -> Dict:
             jac=choquet_config.get('jac', True),
             niter=choquet_config.get('niter', 1000),
             stpa=choquet_config.get('stpa_weight', 0.005),
-            stpy=choquet_config.get('stpy_weight', 0.005)
+            stpy=choquet_config.get('stpy_weight', 0.005),
+            random_state=seed
         ),
         'Choquet_Weight_TN6': ChoquetTnormClassifier(
             methode='Weight',
@@ -169,7 +198,8 @@ def create_choquet_models(config: Dict, seed: int) -> Dict:
             jac=choquet_config.get('jac', True),
             niter=choquet_config.get('niter', 1000),
             stpa=choquet_config.get('stpa_weight', 0.005),
-            stpy=choquet_config.get('stpy_weight', 0.005)
+            stpy=choquet_config.get('stpy_weight', 0.005),
+            random_state=seed
         ),
         'Choquet_Power_TN3': ChoquetTnormClassifier(
             methode='Power',
@@ -179,8 +209,9 @@ def create_choquet_models(config: Dict, seed: int) -> Dict:
             process_data=choquet_config.get('process_data', True),
             jac=choquet_config.get('jac', True),
             niter=choquet_config.get('niter', 1000),
-            stpa=choquet_config.get('stpa_power', 0.001),
-            stpy=choquet_config.get('stpy_power', 0.001)
+            stpa=choquet_config.get('stpa_power_3', 0.001),
+            stpy=choquet_config.get('stpy_power', 0.001),
+            random_state=seed
         ),
         'Choquet_Power_TN6': ChoquetTnormClassifier(
             methode='Power',
@@ -190,14 +221,15 @@ def create_choquet_models(config: Dict, seed: int) -> Dict:
             process_data=choquet_config.get('process_data', True),
             jac=choquet_config.get('jac', True),
             niter=choquet_config.get('niter', 1000),
-            stpa=choquet_config.get('stpa_power', 0.001),
-            stpy=choquet_config.get('stpy_power', 0.001)
+            stpa=choquet_config.get('stpa_power_6', 0.001),
+            stpy=choquet_config.get('stpy_power', 0.001),
+            random_state=seed
         ),
         'LogisticRegression': LogisticRegression(
             penalty=choquet_config.get('lr_penalty', None),
             max_iter=choquet_config.get('lr_max_iter', 1000),
             random_state=seed
-        )
+        ),
     }
     
     return models
@@ -228,6 +260,10 @@ def train_and_evaluate_single_experiment(
     # Parse experiment parameters from folder name
     folder_name = result_dir.name
     params = parse_folder_name(folder_name)
+    
+    # Extract seed and fix all random seeds for reproducibility
+    seed = params.get('seed', 0)
+    set_all_seeds(seed)
     
     # Check if parent directory is a sweep directory
     parent_name = result_dir.parent.name
@@ -267,8 +303,7 @@ def train_and_evaluate_single_experiment(
     if verbose:
         print(f"  Data shape: Train={X_train.shape}, Test={X_test.shape}")
     
-    # Create models
-    seed = params.get('seed', 0)
+    # Create models (seed already extracted and set above)
     models = create_choquet_models(config, seed)
     
     # Train and evaluate each model

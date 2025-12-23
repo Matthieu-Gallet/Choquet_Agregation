@@ -57,7 +57,7 @@ class ChoquetClassifier(ClassifierMixin, BaseEstimator):
     """
 
     def __init__(
-        self, methode="Power", optimizer="Nelder-Mead", process_data=True, jac=True
+        self, methode="Power", optimizer="Nelder-Mead", process_data=True, jac=True, random_state=None
     ) -> None:
         super().__init__()
         self.methode = methode
@@ -69,6 +69,7 @@ class ChoquetClassifier(ClassifierMixin, BaseEstimator):
         self.success = False
         self.process_data = process_data
         self.jac = jac
+        self.random_state = random_state
 
     def initialize(self, X, y=None):
         """
@@ -81,6 +82,10 @@ class ChoquetClassifier(ClassifierMixin, BaseEstimator):
         y : array-like, optional
             Target values.
         """
+        # Set random seed if provided
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+        
         n = X.shape[0]
         self.p_fit = X.shape[1]
         if self.methode == "Power":
@@ -104,6 +109,12 @@ class ChoquetClassifier(ClassifierMixin, BaseEstimator):
         y : array-like
             Target values.
         """
+        # Fix seeds for reproducibility
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+            import random
+            random.seed(self.random_state)
+        
         self.initialize(X, y)
         self.out_ = minimize(
             objective,
@@ -232,6 +243,7 @@ class ChoquetTnormClassifier(ClassifierMixin, BaseEstimator):
         jac=True,
         tnorm_c=3,
         alpha=0.5,
+        random_state=None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -247,6 +259,7 @@ class ChoquetTnormClassifier(ClassifierMixin, BaseEstimator):
         self.tnorm_c = tnorm_c
         self.init_alpha = alpha
         self.alpha = None
+        self.random_state = random_state
         self.kwargs = kwargs
 
     def initialize(self, X, y=None):
@@ -260,6 +273,10 @@ class ChoquetTnormClassifier(ClassifierMixin, BaseEstimator):
         y : array-like, optional
             Target values.
         """
+        # Set random seed if provided
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+        
         n = X.shape[0]
         self.p_fit = X.shape[1]
         if self.init_alpha is None:
@@ -294,6 +311,12 @@ class ChoquetTnormClassifier(ClassifierMixin, BaseEstimator):
         y : array-like
             Target values.
         """
+        # Fix seeds for reproducibility
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+            import random
+            random.seed(self.random_state)
+        
         self.initialize(X, y)
         if self.optimizer == "GD":
             self.out_ = GD_minimize(

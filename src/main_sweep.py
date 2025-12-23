@@ -159,10 +159,12 @@ def run_sweep_experiments(mode: str, n_jobs: int = 1, run_aggregation: bool = Tr
         config_dirs = [base_dir / "sweep_samples"]
     elif mode == "window":
         config_dirs = [base_dir / "sweep_window"]
+    elif mode == "noise":
+        config_dirs = [base_dir / "sweep_noise"]
     elif mode == "all":
-        config_dirs = [base_dir / "sweep_samples", base_dir / "sweep_window"]
+        config_dirs = [base_dir / "sweep_samples", base_dir / "sweep_noise"]
     else:
-        raise ValueError(f"Invalid mode: {mode}. Must be 'samples', 'window', or 'all'.")
+        raise ValueError(f"Invalid mode: {mode}. Must be 'samples', 'window', 'noise', or 'all'.")
     
     # Collect all config files
     config_files = []
@@ -266,8 +268,8 @@ Examples:
         "--mode",
         type=str,
         required=True,
-        choices=["samples", "window", "all"],
-        help="Which sweep mode to run: 'samples' (max_samples_per_class), 'window' (window_size), or 'all'"
+        choices=["samples", "window", "noise", "all"],
+        help="Which sweep mode to run: 'samples' (max_samples_per_class), 'window' (window_size), 'noise' (data_noise_std), or 'all'"
     )
     
     parser.add_argument(
