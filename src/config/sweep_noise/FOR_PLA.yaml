@@ -75,7 +75,7 @@ models:
 # Sweep on data_noise_std
 sweep:
   param_name: "data_noise_std"
-  values: [0.0, 0.05, 0.5,5]
+  values: [0.0, 0.05, 0.5, 2.5]
 
 
 choquet:
