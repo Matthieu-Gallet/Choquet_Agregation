@@ -1,0 +1,18 @@
+\begin{table}[htbp]
+    \centering
+    \caption{Comparison of aggregation methods for FOR vs PLA with data noise std = 0.5}
+    \label{tab:data_noise_std_0.5}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Method} & \textbf{F1 Score} \\
+        \midrule
+        Choquet Power & 0.6456 $\pm$ 0.0256 \\
+        Choquet Power TN3 & 0.6586 $\pm$ 0.0772 \\
+        Choquet Power TN6 & 0.6392 $\pm$ 0.0652 \\
+        Choquet Weight & 0.6019 $\pm$ 0.0268 \\
+        \textbf{Choquet Weight TN3} & \textbf{0.6867 $\pm$ 0.0358} \\
+        Choquet Weight TN6 & 0.5757 $\pm$ 0.0671 \\
+        LogisticRegression & 0.6194 $\pm$ 0.0284 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

@@ -1,0 +1,18 @@
+\begin{table}[htbp]
+    \centering
+    \caption{Comparison of aggregation methods for ROC vs PLA with max samples per class = 2500}
+    \label{tab:max_samples_per_class_2500}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Method} & \textbf{F1 Score} \\
+        \midrule
+        Choquet Power & 0.6305 $\pm$ 0.1726 \\
+        Choquet Power TN3 & 0.6266 $\pm$ 0.1689 \\
+        Choquet Power TN6 & 0.6288 $\pm$ 0.1717 \\
+        Choquet Weight & 0.6017 $\pm$ 0.1301 \\
+        \textbf{Choquet Weight TN3} & \textbf{0.6317 $\pm$ 0.1676} \\
+        Choquet Weight TN6 & 0.6143 $\pm$ 0.1784 \\
+        LogisticRegression & 0.5801 $\pm$ 0.0978 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

@@ -97,6 +97,10 @@ case $choice in
             --results_dir src/results \
             --figures_dir src/figures \
             --max_samples $MAX_SAMPLES
+        
+        echo ""
+        echo "Generating combined table..."
+        python src/evaluation/generate_combined_table.py
         ;;
     2)
         echo ""
@@ -113,6 +117,10 @@ case $choice in
             --results_dir src/results \
             --figures_dir src/figures \
             --data_noise 0.5
+        
+        echo ""
+        echo "Generating combined table..."
+        python src/evaluation/generate_combined_table.py
         ;;
     3)
         echo ""
@@ -129,6 +137,10 @@ case $choice in
             --figures_dir src/figures \
             --max_samples $MAX_SAMPLES \
             --data_noise 0.5
+        
+        echo ""
+        echo "Generating combined table..."
+        python src/evaluation/generate_combined_table.py
         ;;
     4)
         echo ""
@@ -144,6 +156,10 @@ case $choice in
             --figures_dir src/figures \
             --max_samples $MS \
             --data_noise $DN
+        
+        echo ""
+        echo "Generating combined table..."
+        python src/evaluation/generate_combined_table.py
         ;;
     5)
         echo "Exiting..."
@@ -162,4 +178,5 @@ echo "=========================================="
 echo ""
 echo "Results are in: src/results/"
 echo "Figures are in: src/figures/"
+echo "Combined table: src/figures/combined_table.tex"
 echo ""

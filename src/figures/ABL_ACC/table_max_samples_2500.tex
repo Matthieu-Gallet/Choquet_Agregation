@@ -1,0 +1,18 @@
+\begin{table}[htbp]
+    \centering
+    \caption{Comparison of aggregation methods for ABL vs ACC with max samples per class = 2500}
+    \label{tab:max_samples_per_class_2500}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Method} & \textbf{F1 Score} \\
+        \midrule
+        Choquet Power & 0.6153 $\pm$ 0.2083 \\
+        Choquet Power TN3 & 0.6000 $\pm$ 0.2121 \\
+        \textbf{Choquet Power TN6} & \textbf{0.6171 $\pm$ 0.2195} \\
+        Choquet Weight & 0.5616 $\pm$ 0.1422 \\
+        Choquet Weight TN3 & 0.6089 $\pm$ 0.2054 \\
+        Choquet Weight TN6 & 0.6141 $\pm$ 0.2131 \\
+        LogisticRegression & 0.5461 $\pm$ 0.0966 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

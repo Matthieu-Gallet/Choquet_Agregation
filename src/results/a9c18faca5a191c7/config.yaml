@@ -1,0 +1,89 @@
+choquet:
+  alpha: null
+  jac: true
+  lr_max_iter: 10000
+  lr_penalty: null
+  niter: 100000
+  optimizer_power: Nelder-Mead
+  optimizer_tnorm: GD
+  optimizer_weight: Nelder-Mead
+  process_data: true
+  stpa_power_3: 0.5
+  stpa_power_6: 0.05
+  stpa_weight: 0.1
+  stpy_power: 0.5
+  stpy_weight: 0.1
+dataset:
+  class_pair:
+  - ROC
+  - PLA
+  data_path: /home/mgallet/Documents/Codes/Python/3_DEVELOPPEMENT/CPAZMAL/DATASET/dataset/CPAZMaL.hdf5
+  date: '20200804'
+  max_mask_percentage: 10.0
+  max_mask_value: 2
+  max_samples_per_class: 100
+  n_splits: 5
+  orbit: DSC
+  polarisation:
+  - HH
+  - HV
+  scale_type: amplitude
+  skip_optim_offset: true
+  window_size: 5
+models:
+- name: LR
+  params:
+    max_iter: 1000
+  type: LogisticRegression
+- name: RF
+  params:
+    n_estimators: 100
+    n_jobs: -1
+  type: RandomForestClassifier
+- name: KNN
+  params:
+    n_jobs: -1
+    n_neighbors: 2
+  type: KNeighborsClassifier
+- name: SVM
+  params:
+    kernel: linear
+    probability: true
+  type: SVC
+- name: SVMC
+  params:
+    kernel: rbf
+    probability: true
+  type: SVC
+- name: Ada
+  params:
+    n_estimators: 100
+  type: AdaBoostClassifier
+- name: GBM
+  params:
+    n_estimators: 100
+  type: GradientBoostingClassifier
+- name: DT
+  params: {}
+  type: DecisionTreeClassifier
+- name: MLP
+  params:
+    hidden_layer_sizes:
+    - 100
+    - 50
+    max_iter: 1000
+  type: MLPClassifier
+noise:
+  data_noise_std: 0.0
+  label_noise_percentage: 0.0
+sweep:
+  param_name: max_samples_per_class
+  values:
+  - 5
+  - 50
+  - 500
+  - 2500
+  - 5000
+training:
+  n_seeds: 25
+  save_scores: true

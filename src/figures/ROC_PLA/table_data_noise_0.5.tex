@@ -1,0 +1,18 @@
+\begin{table}[htbp]
+    \centering
+    \caption{Comparison of aggregation methods for ROC vs PLA with data noise std = 0.5}
+    \label{tab:data_noise_std_0.5}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Method} & \textbf{F1 Score} \\
+        \midrule
+        Choquet Power & 0.6191 $\pm$ 0.1615 \\
+        Choquet Power TN3 & 0.6160 $\pm$ 0.1584 \\
+        Choquet Power TN6 & 0.6178 $\pm$ 0.1634 \\
+        Choquet Weight & 0.5893 $\pm$ 0.1405 \\
+        \textbf{Choquet Weight TN3} & \textbf{0.6205 $\pm$ 0.1552} \\
+        Choquet Weight TN6 & 0.6035 $\pm$ 0.1677 \\
+        LogisticRegression & 0.5957 $\pm$ 0.1312 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

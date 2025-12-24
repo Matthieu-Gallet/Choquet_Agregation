@@ -1,9 +1,3 @@
-*.zip
-src/figures/*
-src/data/*
-src/.old/*
-
-
 !.gitkeep
 .DS_Store
 .vscode/
@@ -11,8 +5,5 @@ __pycache__/
 *.pyc
 .env
 .ipynb_checkpoints/
-src/results/*
+src/results/**/seed*
 src/doc/*
-src/figures.old/*
-figures/*
-src/config/back/*

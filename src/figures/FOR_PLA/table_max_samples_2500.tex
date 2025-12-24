@@ -1,0 +1,18 @@
+\begin{table}[htbp]
+    \centering
+    \caption{Comparison of aggregation methods for FOR vs PLA with max samples per class = 2500}
+    \label{tab:max_samples_per_class_2500}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{Method} & \textbf{F1 Score} \\
+        \midrule
+        Choquet Power & 0.7491 $\pm$ 0.0251 \\
+        Choquet Power TN3 & 0.7457 $\pm$ 0.0516 \\
+        Choquet Power TN6 & 0.7349 $\pm$ 0.0510 \\
+        Choquet Weight & 0.7430 $\pm$ 0.0259 \\
+        \textbf{Choquet Weight TN3} & \textbf{0.7685 $\pm$ 0.0220} \\
+        Choquet Weight TN6 & 0.6888 $\pm$ 0.0649 \\
+        LogisticRegression & 0.6640 $\pm$ 0.0240 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

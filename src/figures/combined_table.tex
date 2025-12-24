@@ -1,0 +1,46 @@
+\begin{table}[t!]
+\centering
+\caption{Weighted F1-score for the fuzzy aggregation methods. Left: Choquet integral with weighted and power fuzzy measures, and logistic regression. Right: Pre-aggregation with weighted and power fuzzy measures for the two T-norms.}
+\label{tab: score_combined}
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\subcaption{Choquet integral}
+\label{tab: score_choquet}
+\resizebox{\textwidth}{!}{%%
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+\textbf{classification} & \textbf{AA}                       & \textbf{FL}                             & \textbf{RL}                       \\
+\midrule
+\rowcolor{gray!25}
+LR            & $54.6 ± 9.7$          & $66.4 ± 2.4$          & $58.0 ± 9.8$          \\
+ChqW          & $56.2 ± 14.2$          & $74.3 ± 2.6$          & $60.2 ± 13.0$          \\
+\rowcolor{gray!25}
+ChqP          & $\mathbf{61.5 ± 20.8}$ & $\mathbf{74.9 ± 2.5}$ & $\mathbf{63.0 ± 17.3}$ \\
+\bottomrule
+\end{tabular}%%
+}}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.48\textwidth}
+\centering
+\subcaption{Pre-aggregation with T-norms}
+\label{tab: score_tnorm}
+\resizebox{\textwidth}{!}{%%
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+\textbf{classification} &       & \textbf{AA}                       & \textbf{FL}                             & \textbf{RL}                       \\
+\midrule
+\rowcolor{gray!25}
+{ChqW}        & $T^3$ & $\mathbf{60.9 ± 20.5}$ & $\mathbf{76.8 ± 2.2}$ & $\mathbf{63.2 ± 16.8}$ \\
+              & $T^6$ & $61.4 ± 21.3$          & $68.9 ± 6.5$          & $61.4 ± 17.8$          \\
+\rowcolor{gray!25}
+{ChqP}        & $T^3$ & $60.0 ± 21.2$          & $74.6 ± 5.2$          & $62.7 ± 16.9$          \\
+              & $T^6$ & $61.7 ± 21.9$          & $73.5 ± 5.1$          & $62.9 ± 17.2$          \\
+\bottomrule
+\end{tabular}%%
+}}
+\end{minipage}
+\vspace{-1em}
+\end{table}
