@@ -68,7 +68,7 @@ def format_score(mean, std):
     std_pct = std * 100
 
     # Use 1 decimal place and return formatted string
-    return f"{mean_pct:.1f} ± {std_pct:.1f}"
+    return f"{mean_pct:.1f} \\pm {std_pct:.1f}"
 
 def main():
     """Main function to generate the combined table."""
@@ -182,7 +182,7 @@ ChqW          & $SCORE3$          & $SCORE4$          & $SCORE5$          \\
 ChqP          & $\mathbf{SCORE6}$ & $\mathbf{SCORE7}$ & $\mathbf{SCORE8}$ \\
 \bottomrule
 \end{tabular}%%
-}}
+}
 \end{minipage}
 \hfill
 \begin{minipage}[t]{0.48\textwidth}
@@ -203,7 +203,7 @@ ChqP          & $\mathbf{SCORE6}$ & $\mathbf{SCORE7}$ & $\mathbf{SCORE8}$ \\
               & $T^6$ & $SCORE18$          & $SCORE19$          & $SCORE20$          \\
 \bottomrule
 \end{tabular}%%
-}}
+}
 \end{minipage}
 \vspace{-1em}
 \end{table}"""
