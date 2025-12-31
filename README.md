@@ -140,7 +140,7 @@ The option 4. **Analyze Results** in `run_pipeline.sh` generates plots and table
 
 # Run programmatically (non-interactive)
 python src/main_sweep.py --mode samples --n_jobs 10 --data-path /data/CPAZMaL.hdf5
-
+```
 ## Choquet Aggregation Methods
 (cf. Associative Functions: Triangular Norms and Copulas by Alsina et al. 2006):
 ### Classical Methods
