@@ -260,3 +260,23 @@ Contributions are welcome. Please fork the repository, create a feature branch, 
 
 For questions or issues, please open an issue on the repository or contact the authors via the CPAZMaL dataset page.
 
+## To cite the paper
+
+If you find this work useful in your research, please consider citing:
+
+```
+@inproceedings{gallet:hal-05606254,
+  TITLE = {{Aggregation of ensemble of classifiers with fuzzy learning: Application for land cover classification on SAR images}},
+  AUTHOR = {Gallet, Matthieu and Atto, Abdourrahmane and Karbou, Fatima and Trouv{\'e}, Emmanuel},
+  URL = {https://hal.science/hal-05606254},
+  BOOKTITLE = {{28th - International Conference on Pattern Recognition (ICPR)}},
+  ADDRESS = {Lyon, France},
+  YEAR = {2026},
+  MONTH = Aug,
+  KEYWORDS = {Classification ; SAR ; T-norms ; Choquet integral ; Model aggregation},
+  PDF = {https://hal.science/hal-05606254v1/file/main.pdf},
+  HAL_ID = {hal-05606254},
+  HAL_VERSION = {v1},
+}
+```
+
