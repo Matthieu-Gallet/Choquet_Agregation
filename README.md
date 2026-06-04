@@ -1,5 +1,5 @@
 # Choquet Aggregation for Binary Classification
-
+This is the code for the paper "Aggregation of ensemble of classifiers with fuzzy learning: Application for land cover classification on SAR images" accepted in ICPR2026.
 A machine learning framework for binary classification using Choquet integral-based aggregation methods on ensemble classifiers, with applications to cryosphere SAR image classification.
 
 ## Table of Contents
