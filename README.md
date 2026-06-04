@@ -264,7 +264,7 @@ For questions or issues, please open an issue on the repository or contact the a
 
 If you find this work useful in your research, please consider citing:
 
-```
+```bibtex
 @inproceedings{gallet:hal-05606254,
   TITLE = {{Aggregation of ensemble of classifiers with fuzzy learning: Application for land cover classification on SAR images}},
   AUTHOR = {Gallet, Matthieu and Atto, Abdourrahmane and Karbou, Fatima and Trouv{\'e}, Emmanuel},
